@@ -1,24 +1,40 @@
 # Alex Runner
 
-Un jeu de type Chrome Dino Runner, cree specialement pour les **30 ans d'Alexandre**.
+Un endless runner inspire du Chrome Dino, cree specialement pour les **30 ans d'Alexandre**.
 
 ## Le concept
 
-Alex Runner est bien plus qu'un simple jeu d'obstacles : c'est un voyage a travers les souvenirs d'Alexandre. A chaque palier de score, le joueur debloque un moment cle de sa vie — des anecdotes, des references et des clins d'oeil que seuls les proches reconnaitront.
-
-Pour lancer le jeu, il faut connaitre une date bien particuliere... un indice : c'est un anniversaire.
+Le joueur incarne Alex, un personnage avec la tete d'Alexandre, qui court, saute et glisse pour eviter les obstacles. Pour lancer le jeu, il faut connaitre une date bien particuliere... un indice : c'est un anniversaire.
 
 ## Comment jouer
 
-- **Espace / Fleche haut** : sauter
-- **Fleche bas** : se baisser (pour esquiver les oiseaux)
-- **Ecran tactile** : tap pour sauter (compatible mobile)
+| Action | Clavier | Mobile |
+|--------|---------|--------|
+| Sauter | Espace / Fleche haut | Tap sur l'ecran |
+| Glisser | Fleche bas | - |
+
+## Animations du joueur
+
+- **Course** : mouvement de balancier realiste avec synchronisation croisee bras/jambes
+- **Saut** : bras leves en Y, jambes repliees en arriere, squash & stretch a l'envol et a l'atterrissage
+- **Glissade** : pieds en avant, corps incline en arriere, un bras leve au ciel
+
+## Configuration
+
+Deux variables sont disponibles en haut du fichier `index.html` pour faciliter les tests :
+
+```javascript
+const COLLISION_ENABLED = true;   // false = le joueur traverse les obstacles sans mourir
+const DATE_REQUIRED = true;       // false = pas besoin d'entrer la date pour jouer
+```
 
 ## Technique
 
 - Fichier unique `index.html` (HTML + CSS + JS)
+- Rendu Canvas 2D avec animations procedurales (zero sprite)
+- Physique : gravite, squash & stretch avec ressort
 - Zero dependance externe
-- Hebergeable directement sur GitHub Pages
+- Compatible mobile (touch events)
 
 ## Hebergement
 
