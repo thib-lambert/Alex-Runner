@@ -163,7 +163,16 @@ alexHead.src = 'alex.jpeg';
 const dino = {
   x: 60, y: GROUND_Y, w: 28, h: 60,
   vy: 0, jumping: false, ducking: false,
-  legFrame: 0
+  legFrame: 0,
+  // Smooth animation state
+  runCycle: 0,        // continuous running cycle (radians)
+  squash: 1,          // vertical scale (1 = normal, <1 = squashed, >1 = stretched)
+  squashVel: 0,       // spring velocity for squash recovery
+  lean: 0,            // body lean angle (radians)
+  landTimer: 0,       // frames since landing (for impact effect)
+  wasJumping: false,   // track jump->land transition
+  jumpHoldFrames: 0,  // how long jump is held for variable height
+  armSwing: 0         // smooth arm angle
 };
 
 // Obstacles
@@ -181,6 +190,14 @@ function reset() {
   dino.vy = 0;
   dino.jumping = false;
   dino.ducking = false;
+  dino.runCycle = 0;
+  dino.squash = 1;
+  dino.squashVel = 0;
+  dino.lean = 0;
+  dino.landTimer = 0;
+  dino.wasJumping = false;
+  dino.jumpHoldFrames = 0;
+  dino.armSwing = 0;
   obstacles = [];
   nextObstacleIn = 60;
   score = 0;
@@ -189,109 +206,184 @@ function reset() {
 }
 
 // Drawing helpers
+
+// Helper: draw a limb pivoting from its TOP (shoulder/hip), hanging down
+function drawLimb(pivotX, pivotY, w, h, angle) {
+  ctx.save();
+  ctx.translate(pivotX, pivotY);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  const r = Math.min(w, h) * 0.35;
+  ctx.roundRect(-w / 2, 0, w, h, r);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawDino() {
   ctx.fillStyle = '#535353';
-  const legT = Math.floor(frame / 5) % 2;
   const HEAD_SIZE = 24;
 
+  // Update running cycle (speed-dependent for realistic cadence)
+  if (!dino.jumping && !dino.ducking && gameState === 'running') {
+    dino.runCycle += speed * 0.025;
+    dino.landTimer++;
+  }
+
+  // Squash & stretch spring physics
+  const squashTarget = 1;
+  const squashSpring = 0.3;
+  const squashDamp = 0.65;
+  dino.squashVel += (squashTarget - dino.squash) * squashSpring;
+  dino.squashVel *= squashDamp;
+  dino.squash += dino.squashVel;
+
+  // Smooth lean: lean forward while running, back while ascending, forward while falling
+  let targetLean = 0;
+  if (dino.jumping) {
+    targetLean = dino.vy < 0 ? -0.08 : 0.1;
+  } else if (gameState === 'running' && !dino.ducking) {
+    targetLean = 0.05 + Math.sin(dino.runCycle) * 0.02;
+  }
+  dino.lean += (targetLean - dino.lean) * 0.15;
+
+  // Running body bob
+  const bob = (!dino.jumping && !dino.ducking && gameState === 'running')
+    ? Math.abs(Math.sin(dino.runCycle)) * 1.2 : 0;
+
+  // Sine-based cycle values for smooth limb motion
+  const legSin = Math.sin(dino.runCycle);
+  const legCos = Math.cos(dino.runCycle);
+  const armSin = Math.sin(dino.runCycle + Math.PI); // arms opposite to legs
+
   if (dino.ducking && !dino.jumping) {
-    // Slide pose: lying low
+    // === SLIDE POSE ===
     const dw = 40, dh = 20;
     const dy = GROUND_Y - dh;
     dino.w = dw; dino.h = dh;
     dino.drawY = dy;
 
-    // Torso (horizontal)
-    ctx.fillRect(dino.x, dy + 4, 30, 12);
-    // Arms forward
-    ctx.fillRect(dino.x + 28, dy + 6, 10, 4);
-    // Legs back
-    if (legT === 0) {
-      ctx.fillRect(dino.x - 8, dy + 2, 10, 5);
-      ctx.fillRect(dino.x - 6, dy + 10, 8, 5);
-    } else {
-      ctx.fillRect(dino.x - 6, dy + 2, 8, 5);
-      ctx.fillRect(dino.x - 8, dy + 10, 10, 5);
-    }
-    // Head (photo) - tilted forward
     ctx.save();
+    ctx.translate(dino.x + 15, dy + 10);
+
+    // Torso (horizontal)
+    ctx.fillStyle = '#535353';
     ctx.beginPath();
-    ctx.arc(dino.x + 36, dy + 4, HEAD_SIZE / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(alexHead, dino.x + 36 - HEAD_SIZE / 2, dy + 4 - HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
+    ctx.roundRect(-15, -6, 30, 12, 3);
+    ctx.fill();
+
+    // Arms forward
+    drawLimb(17, -2, 12, 5, -0.2 + Math.sin(frame * 0.1) * 0.05);
+
+    // Legs back (slight movement)
+    const slideKick = Math.sin(frame * 0.15) * 0.15;
+    drawLimb(-12, -3, 10, 5, slideKick);
+    drawLimb(-10, 5, 9, 5, -slideKick);
+
     ctx.restore();
-    // Head outline
+
+    // Head (photo) - tilted forward
+    const headX = dino.x + 36;
+    const headY = dy + 4;
+    ctx.save();
+    ctx.translate(headX, headY);
+    ctx.rotate(0.15);
+    ctx.beginPath();
+    ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(alexHead, -HEAD_SIZE / 2, -HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
+    ctx.restore();
     ctx.strokeStyle = '#535353';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(dino.x + 36, dy + 4, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.arc(headX, headY, HEAD_SIZE / 2, 0, Math.PI * 2);
     ctx.stroke();
 
   } else {
-    // Standing / running / jumping pose
+    // === STANDING / RUNNING / JUMPING POSE ===
     dino.w = 28; dino.h = 60;
-    const dy = dino.y - dino.h;
+    const baseY = dino.y - bob;
+    const dy = baseY - dino.h * dino.squash;
     dino.drawY = dy;
 
-    // Head (photo - circular)
-    const headCx = dino.x + 14;
-    const headCy = dy + HEAD_SIZE / 2;
+    // Apply squash & stretch: scale around feet
     ctx.save();
+    const pivotX = dino.x + 14;
+    const pivotY = dino.y; // feet stay on ground
+    ctx.translate(pivotX, pivotY);
+    ctx.rotate(dino.lean);
+    // Squash: wider when squashed, narrower when stretched
+    const sx = 1 + (1 - dino.squash) * 0.5;
+    ctx.scale(sx, dino.squash);
+    ctx.translate(-pivotX, -pivotY);
+
+    const bodyTop = dino.y - dino.h;
+
+    // Head (photo - circular) with slight bob
+    const headCx = dino.x + 14;
+    const headCy = bodyTop + HEAD_SIZE / 2;
+    const headTilt = dino.jumping ? dino.vy * 0.01 : Math.sin(dino.runCycle * 2) * 0.04;
+    ctx.save();
+    ctx.translate(headCx, headCy);
+    ctx.rotate(headTilt);
     ctx.beginPath();
-    ctx.arc(headCx, headCy, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(alexHead, headCx - HEAD_SIZE / 2, headCy - HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
+    ctx.drawImage(alexHead, -HEAD_SIZE / 2, -HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
     ctx.restore();
-    // Head outline
     ctx.strokeStyle = '#535353';
     ctx.lineWidth = 1.5;
+    ctx.save();
+    ctx.translate(headCx, headCy);
+    ctx.rotate(headTilt);
     ctx.beginPath();
-    ctx.arc(headCx, headCy, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
 
     // Torso
-    ctx.fillRect(dino.x + 6, dy + HEAD_SIZE, 16, 22);
+    ctx.fillStyle = '#535353';
+    ctx.beginPath();
+    ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 1, 18, 23, 3);
+    ctx.fill();
 
-    // Arms
+    // === LEGS (smooth sine stride, pendulum from hip) ===
+    const hipY = bodyTop + HEAD_SIZE + 22;
+    const hipLX = dino.x + 8;
+    const hipRX = dino.x + 18;
+    const LEG_LEN = 16;
+
     if (dino.jumping) {
-      // Arms up
-      ctx.fillRect(dino.x - 2, dy + HEAD_SIZE + 2, 8, 4);
-      ctx.fillRect(dino.x + 22, dy + HEAD_SIZE + 2, 8, 4);
+      const tuck = dino.vy < 0 ? 0.3 : -0.15;
+      drawLimb(hipLX, hipY, 6, LEG_LEN, tuck - 0.1);
+      drawLimb(hipRX, hipY, 6, LEG_LEN, -tuck + 0.1);
     } else {
-      // Running arms swing
-      if (legT === 0) {
-        ctx.fillRect(dino.x - 4, dy + HEAD_SIZE + 4, 10, 4);
-        ctx.fillRect(dino.x + 22, dy + HEAD_SIZE + 10, 10, 4);
-      } else {
-        ctx.fillRect(dino.x - 4, dy + HEAD_SIZE + 10, 10, 4);
-        ctx.fillRect(dino.x + 22, dy + HEAD_SIZE + 4, 10, 4);
-      }
+      // Leg angles: inverted so positive angle = leg forward visually
+      const legAngleL = -legSin * 0.4;
+      const legAngleR = legSin * 0.4;
+
+      drawLimb(hipLX, hipY, 7, LEG_LEN, legAngleL);
+      drawLimb(hipRX, hipY, 7, LEG_LEN, legAngleR);
+
     }
 
-    // Legs
-    const legTop = dy + HEAD_SIZE + 22;
+    // === ARMS (pendulum from shoulder, opposite to legs) ===
+    const shoulderY = bodyTop + HEAD_SIZE + 3;
+    const shoulderLX = dino.x + 4;
+    const shoulderRX = dino.x + 24;
+
     if (dino.jumping) {
-      // Tucked legs
-      ctx.fillRect(dino.x + 4, legTop, 6, 14);
-      ctx.fillRect(dino.x + 16, legTop, 6, 14);
+      const spread = Math.min(0.8, Math.max(-0.3, -dino.vy * 0.06));
+      drawLimb(shoulderLX, shoulderY, 5, 13, -1.2 - spread);
+      drawLimb(shoulderRX, shoulderY, 5, 13, 1.2 + spread);
     } else {
-      // Running legs
-      if (legT === 0) {
-        // Left forward, right back
-        ctx.fillRect(dino.x + 2, legTop, 6, 16);
-        ctx.fillRect(dino.x + 18, legTop, 6, 10);
-        // Feet
-        ctx.fillRect(dino.x, legTop + 16, 8, 4);
-        ctx.fillRect(dino.x + 20, legTop + 10, 8, 4);
-      } else {
-        // Right forward, left back
-        ctx.fillRect(dino.x + 2, legTop, 6, 10);
-        ctx.fillRect(dino.x + 18, legTop, 6, 16);
-        // Feet
-        ctx.fillRect(dino.x, legTop + 10, 8, 4);
-        ctx.fillRect(dino.x + 20, legTop + 16, 8, 4);
-      }
+      // Cross-body sync: left arm opposite to left leg
+      const armAngleL = legSin * 0.35;
+      const armAngleR = -legSin * 0.35;
+      drawLimb(shoulderLX, shoulderY, 5, 13, armAngleL);
+      drawLimb(shoulderRX, shoulderY, 5, 13, armAngleR);
     }
+
+    ctx.restore(); // end squash/stretch transform
   }
 }
 
@@ -410,10 +502,16 @@ function update() {
   if (dino.jumping) {
     dino.vy += GRAVITY;
     dino.y += dino.vy;
+    dino.wasJumping = true;
     if (dino.y >= GROUND_Y) {
       dino.y = GROUND_Y;
+      // Landing impact: squash proportional to fall speed
+      const impactForce = Math.min(dino.vy * 0.04, 0.25);
+      dino.squash = 1 - impactForce;
+      dino.squashVel = -impactForce * 0.5;
       dino.vy = 0;
       dino.jumping = false;
+      dino.landTimer = 0;
     }
   }
 
@@ -471,6 +569,9 @@ function jump() {
   if (!dino.jumping) {
     dino.jumping = true;
     dino.vy = dino.ducking ? DUCK_JUMP_FORCE : JUMP_FORCE;
+    // Stretch on takeoff
+    dino.squash = 1.2;
+    dino.squashVel = 0.1;
   }
 }
 
