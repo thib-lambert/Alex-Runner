@@ -256,37 +256,48 @@ function drawDino() {
   const armSin = Math.sin(dino.runCycle + Math.PI); // arms opposite to legs
 
   if (dino.ducking && !dino.jumping) {
-    // === SLIDE POSE ===
-    const dw = 40, dh = 20;
+    // === SLIDE POSE: feet first, leaning back, one arm up ===
+    const dw = 48, dh = 24;
     const dy = GROUND_Y - dh;
     dino.w = dw; dino.h = dh;
     dino.drawY = dy;
 
-    ctx.save();
-    ctx.translate(dino.x + 15, dy + 10);
+    const cx = dino.x + 20;
+    const cy = GROUND_Y;
 
-    // Torso (horizontal)
     ctx.fillStyle = '#535353';
+
+    // Torso (tilted back ~30deg)
+    ctx.save();
+    ctx.translate(cx, cy - 12);
+    ctx.rotate(-0.4);
     ctx.beginPath();
-    ctx.roundRect(-15, -6, 30, 12, 3);
+    ctx.roundRect(-8, -12, 16, 22, 3);
     ctx.fill();
-
-    // Arms forward
-    drawLimb(17, -2, 12, 5, -0.2 + Math.sin(frame * 0.1) * 0.05);
-
-    // Legs back (slight movement)
-    const slideKick = Math.sin(frame * 0.15) * 0.15;
-    drawLimb(-12, -3, 10, 5, slideKick);
-    drawLimb(-10, 5, 9, 5, -slideKick);
-
     ctx.restore();
 
-    // Head (photo) - tilted forward
-    const headX = dino.x + 36;
-    const headY = dy + 4;
+    // Legs extended forward (feet first)
+    const hipX = cx + 5;
+    const hipY = cy - 6;
+    drawLimb(hipX, hipY, 7, 16, -1.2); // upper leg forward
+    drawLimb(hipX + 2, hipY, 7, 16, -1.35); // second leg slightly different
+
+    // Left arm raised to the sky (behind the body)
+    const shoulderLX = cx - 8;
+    const shoulderLY = cy - 20;
+    drawLimb(shoulderLX, shoulderLY, 5, 13, 2.6);
+
+    // Right arm trailing back low
+    const shoulderRX = cx - 4;
+    const shoulderRY = cy - 14;
+    drawLimb(shoulderRX, shoulderRY, 5, 10, 0.8);
+
+    // Head (photo) - tilted back
+    const headX = cx - 10;
+    const headY = cy - 28;
     ctx.save();
     ctx.translate(headX, headY);
-    ctx.rotate(0.15);
+    ctx.rotate(-0.3);
     ctx.beginPath();
     ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
     ctx.clip();
