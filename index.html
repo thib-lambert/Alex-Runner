@@ -89,7 +89,7 @@
     <input type="text" id="birth-input" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
     <div id="birth-error"></div>
   </div>
-  <canvas id="game" width="800" height="200"></canvas>
+  <canvas id="game" width="800" height="250"></canvas>
   <div id="score">00000</div>
   <div id="message">
     <h2>ALEX RUNNER</h2>
@@ -150,8 +150,8 @@ const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const messageEl = document.getElementById('message');
 
-const W = 800, H = 200;
-const GROUND_Y = 170;
+const W = 800, H = 250;
+const GROUND_Y = 220;
 const GRAVITY = 0.6;
 const JUMP_FORCE = -12;
 const DUCK_JUMP_FORCE = -10;
