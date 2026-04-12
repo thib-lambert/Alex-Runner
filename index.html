@@ -155,9 +155,13 @@ let speed = 6;
 let frame = 0;
 let groundOffset = 0;
 
-// Dino
+// Alex head image
+const alexHead = new Image();
+alexHead.src = 'alex.jpeg';
+
+// Runner (Alex)
 const dino = {
-  x: 60, y: GROUND_Y, w: 40, h: 44,
+  x: 60, y: GROUND_Y, w: 28, h: 60,
   vy: 0, jumping: false, ducking: false,
   legFrame: 0
 };
@@ -188,57 +192,104 @@ function reset() {
 function drawDino() {
   ctx.fillStyle = '#535353';
   const legT = Math.floor(frame / 5) % 2;
+  const HEAD_SIZE = 24;
 
   if (dino.ducking && !dino.jumping) {
-    // Duck pose: wider, shorter
-    const dw = 50, dh = 26;
+    // Slide pose: lying low
+    const dw = 40, dh = 20;
     const dy = GROUND_Y - dh;
-    ctx.fillRect(dino.x, dy, dw, dh);
-    // Head
-    ctx.fillRect(dino.x + dw - 14, dy - 8, 14, 12);
-    // Eye
-    ctx.fillStyle = '#f7f7f7';
-    ctx.fillRect(dino.x + dw - 6, dy - 6, 4, 4);
-    ctx.fillStyle = '#535353';
-    // Legs
-    if (legT === 0) {
-      ctx.fillRect(dino.x + 8, dy + dh, 6, 8);
-      ctx.fillRect(dino.x + 28, dy + dh, 6, 2);
-    } else {
-      ctx.fillRect(dino.x + 8, dy + dh, 6, 2);
-      ctx.fillRect(dino.x + 28, dy + dh, 6, 8);
-    }
-    // Update hitbox
     dino.w = dw; dino.h = dh;
     dino.drawY = dy;
+
+    // Torso (horizontal)
+    ctx.fillRect(dino.x, dy + 4, 30, 12);
+    // Arms forward
+    ctx.fillRect(dino.x + 28, dy + 6, 10, 4);
+    // Legs back
+    if (legT === 0) {
+      ctx.fillRect(dino.x - 8, dy + 2, 10, 5);
+      ctx.fillRect(dino.x - 6, dy + 10, 8, 5);
+    } else {
+      ctx.fillRect(dino.x - 6, dy + 2, 8, 5);
+      ctx.fillRect(dino.x - 8, dy + 10, 10, 5);
+    }
+    // Head (photo) - tilted forward
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(dino.x + 36, dy + 4, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(alexHead, dino.x + 36 - HEAD_SIZE / 2, dy + 4 - HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
+    ctx.restore();
+    // Head outline
+    ctx.strokeStyle = '#535353';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(dino.x + 36, dy + 4, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.stroke();
+
   } else {
-    // Normal / jump pose
-    dino.w = 40; dino.h = 44;
+    // Standing / running / jumping pose
+    dino.w = 28; dino.h = 60;
     const dy = dino.y - dino.h;
     dino.drawY = dy;
-    // Body
-    ctx.fillRect(dino.x, dy, 30, 44);
-    // Head
-    ctx.fillRect(dino.x + 16, dy - 14, 22, 20);
-    // Eye
-    ctx.fillStyle = '#f7f7f7';
-    ctx.fillRect(dino.x + 30, dy - 10, 4, 4);
-    ctx.fillStyle = '#535353';
-    // Arm
-    ctx.fillRect(dino.x + 24, dy + 18, 10, 4);
 
+    // Head (photo - circular)
+    const headCx = dino.x + 14;
+    const headCy = dy + HEAD_SIZE / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(headCx, headCy, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(alexHead, headCx - HEAD_SIZE / 2, headCy - HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
+    ctx.restore();
+    // Head outline
+    ctx.strokeStyle = '#535353';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(headCx, headCy, HEAD_SIZE / 2, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Torso
+    ctx.fillRect(dino.x + 6, dy + HEAD_SIZE, 16, 22);
+
+    // Arms
     if (dino.jumping) {
-      // Static legs in air
-      ctx.fillRect(dino.x + 4, dy + 44, 6, 8);
-      ctx.fillRect(dino.x + 18, dy + 44, 6, 8);
+      // Arms up
+      ctx.fillRect(dino.x - 2, dy + HEAD_SIZE + 2, 8, 4);
+      ctx.fillRect(dino.x + 22, dy + HEAD_SIZE + 2, 8, 4);
     } else {
-      // Animated legs
+      // Running arms swing
       if (legT === 0) {
-        ctx.fillRect(dino.x + 4, dy + 44, 6, 8);
-        ctx.fillRect(dino.x + 18, dy + 44, 6, 2);
+        ctx.fillRect(dino.x - 4, dy + HEAD_SIZE + 4, 10, 4);
+        ctx.fillRect(dino.x + 22, dy + HEAD_SIZE + 10, 10, 4);
       } else {
-        ctx.fillRect(dino.x + 4, dy + 44, 6, 2);
-        ctx.fillRect(dino.x + 18, dy + 44, 6, 8);
+        ctx.fillRect(dino.x - 4, dy + HEAD_SIZE + 10, 10, 4);
+        ctx.fillRect(dino.x + 22, dy + HEAD_SIZE + 4, 10, 4);
+      }
+    }
+
+    // Legs
+    const legTop = dy + HEAD_SIZE + 22;
+    if (dino.jumping) {
+      // Tucked legs
+      ctx.fillRect(dino.x + 4, legTop, 6, 14);
+      ctx.fillRect(dino.x + 16, legTop, 6, 14);
+    } else {
+      // Running legs
+      if (legT === 0) {
+        // Left forward, right back
+        ctx.fillRect(dino.x + 2, legTop, 6, 16);
+        ctx.fillRect(dino.x + 18, legTop, 6, 10);
+        // Feet
+        ctx.fillRect(dino.x, legTop + 16, 8, 4);
+        ctx.fillRect(dino.x + 20, legTop + 10, 8, 4);
+      } else {
+        // Right forward, left back
+        ctx.fillRect(dino.x + 2, legTop, 6, 10);
+        ctx.fillRect(dino.x + 18, legTop, 6, 16);
+        // Feet
+        ctx.fillRect(dino.x, legTop + 10, 8, 4);
+        ctx.fillRect(dino.x + 20, legTop + 16, 8, 4);
       }
     }
   }
@@ -320,10 +371,10 @@ function checkCollision(ob) {
   // Dino hitbox
   let dx, dy, dw, dh;
   if (dino.ducking && !dino.jumping) {
-    dw = 50; dh = 26;
-    dx = dino.x + 4;
-    dy = GROUND_Y - dh + 4;
-    dw -= 8; dh -= 8;
+    dw = 40; dh = 20;
+    dx = dino.x + 2;
+    dy = GROUND_Y - dh + 2;
+    dw -= 4; dh -= 4;
   } else {
     dx = dino.x + 6;
     dy = dino.y - dino.h + 6;
