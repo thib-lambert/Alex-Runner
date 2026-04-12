@@ -98,6 +98,10 @@
 </div>
 
 <script>
+// === CONFIGURATION ===
+const COLLISION_ENABLED = true;   // false = le joueur ne meurt pas en touchant les obstacles
+const DATE_REQUIRED = true;       // false = pas besoin d'entrer la date pour jouer
+
 // Birthday gate
 const birthScreen = document.getElementById('birth-screen');
 const birthInput = document.getElementById('birth-input');
@@ -135,7 +139,11 @@ birthInput.addEventListener('keydown', e => {
   }
 });
 
-birthInput.focus();
+if (!DATE_REQUIRED) {
+  birthScreen.style.display = 'none';
+} else {
+  birthInput.focus();
+}
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -541,7 +549,7 @@ function update() {
 
   // Collision
   for (const ob of obstacles) {
-    if (checkCollision(ob)) {
+    if (COLLISION_ENABLED && checkCollision(ob)) {
       gameState = 'over';
       if (score > highScore) highScore = score;
       messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(score)).padStart(5, '0') +
