@@ -11,7 +11,7 @@ Le joueur incarne Alex, un personnage avec la tete d'Alexandre, qui court, saute
 | Action | Clavier | Mobile |
 |--------|---------|--------|
 | Sauter | Espace / Fleche haut | Tap sur l'ecran |
-| Glisser | Fleche bas | - |
+| Glisser | Fleche bas | Swipe vers le bas (maintenu) |
 
 ## Animations du joueur
 
