@@ -19,6 +19,9 @@
     position: relative;
     width: 800px;
     max-width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   canvas {
     display: block;
@@ -79,6 +82,37 @@
     color: #c0392b;
     height: 18px;
   }
+
+  /* Mobile buttons */
+  #mobile-controls {
+    position: relative;
+    display: none;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  .mobile-btn {
+    padding: 12px 20px;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    background: #535353;
+    color: #f7f7f7;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    font-weight: bold;
+    active: 0.9;
+  }
+  .mobile-btn:active {
+    opacity: 0.7;
+  }
+
+  @media (max-width: 768px) {
+    #mobile-controls {
+      display: flex;
+    }
+  }
 </style>
 </head>
 <body>
@@ -95,6 +129,13 @@
     <h2>ALEX RUNNER</h2>
     <p>Appuie sur Espace ou touche l'ecran pour jouer</p>
   </div>
+  <div id="mobile-controls">
+    <button class="mobile-btn" id="jump-btn">SAUTER</button>
+    <button class="mobile-btn" id="duck-btn">BAISSER</button>
+  </div>
+  <audio id="jump-sound" preload="auto">
+    <source src="nut_nut.mp3" type="audio/mpeg">
+  </audio>
 </div>
 
 <script>
@@ -165,11 +206,11 @@ let groundOffset = 0;
 
 // Alex head image
 const alexHead = new Image();
-alexHead.src = 'alex.jpeg';
+alexHead.src = 'alex_detoure.png';
 
 // Runner (Alex)
 const dino = {
-  x: 60, y: GROUND_Y, w: 28, h: 60,
+  x: 60, y: GROUND_Y, w: 28, h: 72,
   vy: 0, jumping: false, ducking: false,
   legFrame: 0,
   // Smooth animation state
@@ -229,7 +270,7 @@ function drawLimb(pivotX, pivotY, w, h, angle) {
 
 function drawDino() {
   ctx.fillStyle = '#535353';
-  const HEAD_SIZE = 24;
+  const HEAD_SIZE = 36;
 
   // Update running cycle (speed-dependent for realistic cadence)
   if (!dino.jumping && !dino.ducking && gameState === 'running') {
@@ -306,20 +347,12 @@ function drawDino() {
     ctx.save();
     ctx.translate(headX, headY);
     ctx.rotate(-0.3);
-    ctx.beginPath();
-    ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
-    ctx.clip();
     ctx.drawImage(alexHead, -HEAD_SIZE / 2, -HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
     ctx.restore();
-    ctx.strokeStyle = '#535353';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(headX, headY, HEAD_SIZE / 2, 0, Math.PI * 2);
-    ctx.stroke();
 
   } else {
     // === STANDING / RUNNING / JUMPING POSE ===
-    dino.w = 28; dino.h = 60;
+    dino.w = 28; dino.h = 72;
     const baseY = dino.y - bob;
     const dy = baseY - dino.h * dino.squash;
     dino.drawY = dy;
@@ -337,36 +370,14 @@ function drawDino() {
 
     const bodyTop = dino.y - dino.h;
 
-    // Head (photo - circular) with slight bob
-    const headCx = dino.x + 14;
-    const headCy = bodyTop + HEAD_SIZE / 2;
-    const headTilt = dino.jumping ? dino.vy * 0.01 : Math.sin(dino.runCycle * 2) * 0.04;
-    ctx.save();
-    ctx.translate(headCx, headCy);
-    ctx.rotate(headTilt);
-    ctx.beginPath();
-    ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(alexHead, -HEAD_SIZE / 2, -HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
-    ctx.restore();
-    ctx.strokeStyle = '#535353';
-    ctx.lineWidth = 1.5;
-    ctx.save();
-    ctx.translate(headCx, headCy);
-    ctx.rotate(headTilt);
-    ctx.beginPath();
-    ctx.arc(0, 0, HEAD_SIZE / 2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
     // Torso
     ctx.fillStyle = '#535353';
     ctx.beginPath();
-    ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 1, 18, 23, 3);
+    ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 8, 18, 23, 3);
     ctx.fill();
 
     // === LEGS (smooth sine stride, pendulum from hip) ===
-    const hipY = bodyTop + HEAD_SIZE + 22;
+    const hipY = bodyTop + HEAD_SIZE + 15;
     const hipLX = dino.x + 8;
     const hipRX = dino.x + 18;
     const LEG_LEN = 16;
@@ -401,6 +412,16 @@ function drawDino() {
       drawLimb(shoulderLX, shoulderY, 5, 13, armAngleL);
       drawLimb(shoulderRX, shoulderY, 5, 13, armAngleR);
     }
+
+    // Head (photo) with slight bob - drawn last so it appears on top
+    const headCx = dino.x + 14;
+    const headCy = bodyTop + HEAD_SIZE / 2;
+    const headTilt = dino.jumping ? dino.vy * 0.01 : Math.sin(dino.runCycle * 2) * 0.04;
+    ctx.save();
+    ctx.translate(headCx, headCy);
+    ctx.rotate(headTilt);
+    ctx.drawImage(alexHead, -HEAD_SIZE / 2, -HEAD_SIZE / 2, HEAD_SIZE, HEAD_SIZE);
+    ctx.restore();
 
     ctx.restore(); // end squash/stretch transform
   }
@@ -591,6 +612,10 @@ function jump() {
     // Stretch on takeoff
     dino.squash = 1.2;
     dino.squashVel = 0.1;
+    // Play jump sound
+    const jumpSound = document.getElementById('jump-sound');
+    jumpSound.currentTime = 0;
+    jumpSound.play().catch(() => {});
   }
 }
 
@@ -640,6 +665,39 @@ canvas.addEventListener('touchend', e => {
     dino.ducking = false;
     if (dy <= 30) jump();
   }
+});
+
+// Mobile buttons
+const jumpBtn = document.getElementById('jump-btn');
+const duckBtn = document.getElementById('duck-btn');
+
+jumpBtn.addEventListener('click', () => {
+  if (gameState === 'idle' || gameState === 'over') startGame();
+  else if (gameState === 'running') jump();
+});
+
+jumpBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (gameState === 'idle' || gameState === 'over') startGame();
+  else if (gameState === 'running') jump();
+});
+
+duckBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (gameState === 'running') dino.ducking = true;
+});
+
+duckBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  dino.ducking = false;
+});
+
+duckBtn.addEventListener('mousedown', () => {
+  if (gameState === 'running') dino.ducking = true;
+});
+
+duckBtn.addEventListener('mouseup', () => {
+  dino.ducking = false;
 });
 
 loop();
