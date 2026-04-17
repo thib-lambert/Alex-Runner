@@ -335,6 +335,15 @@ const COL_SHOES = '#2D3436';
 function drawDino() {
   const HEAD_SIZE = 36;
 
+  // Drop shadow under feet (shrinks when jumping for weight feel)
+  const shadowScale = dino.jumping
+    ? Math.max(0.4, 1 - (GROUND_Y - dino.y) / 140)
+    : 1;
+  ctx.fillStyle = `rgba(0, 0, 0, ${0.18 * shadowScale})`;
+  ctx.beginPath();
+  ctx.ellipse(dino.x + 14, GROUND_Y + 2, 18 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   // Update running cycle (speed-dependent for realistic cadence)
   if (!dino.jumping && !dino.ducking && gameState === 'running') {
     dino.runCycle += speed * 0.025;
@@ -811,6 +820,12 @@ function drawClouds() {
 }
 
 function spawnObstacle() {
+  // Avoid unplayable overlaps: skip spawn if last obstacle is still too close
+  if (obstacles.length > 0) {
+    const last = obstacles[obstacles.length - 1];
+    if (W - last.x < 120) { nextObstacleIn = 20; return; }
+  }
+
   const r = Math.random();
   let ob;
   if (r < 0.3) {
@@ -820,8 +835,10 @@ function spawnObstacle() {
   } else if (r < 0.8) {
     ob = { x: W, type: 'double', w: 28, h: 42, bird: false };
   } else {
-    // Pingu le pingouin en hauteur - il faut glisser dessous !
-    ob = { x: W, y: GROUND_Y - 70, type: 'bird', w: 26, h: 36, bird: true };
+    // Pingu le pingouin a hauteur variable : force sauter OU glisser selon le cas
+    const heights = [50, 70, 90];
+    const h = heights[Math.floor(Math.random() * heights.length)];
+    ob = { x: W, y: GROUND_Y - h, type: 'bird', w: 26, h: 36, bird: true };
     // Son "nut nut" a l'apparition
     const pinguSound = document.getElementById('jump-sound');
     if (pinguSound) {
@@ -868,8 +885,8 @@ function update() {
   frame++;
   groundOffset += speed;
 
-  // Speed up over time
-  speed = 6 + score * 0.002;
+  // Speed up over time (smooth curve: slow → rapid → intense)
+  speed = 6 + Math.pow(score * 0.01, 1.2);
   if (speed > 14) speed = 14;
 
   // Dino physics
@@ -904,14 +921,23 @@ function update() {
 
   // Collision
   for (const ob of obstacles) {
-    if (COLLISION_ENABLED && checkCollision(ob)) {
-      gameState = 'over';
-      if (score > highScore) highScore = score;
-      messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(score)).padStart(5, '0') +
-        (highScore > 0 ? ' | Record: ' + String(Math.floor(highScore)).padStart(5, '0') : '') +
-        '</p><p style="margin-top:8px">Appuie sur Espace pour rejouer</p>';
-      messageEl.style.display = 'block';
-      return;
+    if (checkCollision(ob)) {
+      // Screen shake on impact (once per obstacle)
+      if (!ob.hit) {
+        ob.hit = true;
+        const shake = 5;
+        canvas.style.transform = `translate(${(Math.random() - 0.5) * shake * 2}px, ${(Math.random() - 0.5) * shake * 2}px)`;
+        setTimeout(() => { canvas.style.transform = 'translate(0, 0)'; }, 80);
+      }
+      if (COLLISION_ENABLED) {
+        gameState = 'over';
+        if (score > highScore) highScore = score;
+        messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(score)).padStart(5, '0') +
+          (highScore > 0 ? ' | Record: ' + String(Math.floor(highScore)).padStart(5, '0') : '') +
+          '</p><p style="margin-top:8px">Appuie sur Espace pour rejouer</p>';
+        messageEl.style.display = 'block';
+        return;
+      }
     }
   }
 
