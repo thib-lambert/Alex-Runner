@@ -637,92 +637,110 @@ function drawCactus(ob) {
   }
 }
 
+// Pingu le pingouin (remplace les oiseaux)
 function drawBird(ob) {
-  const by = ob.y;
-  const cx = ob.x + 15;
-  const cy = by + 4;
+  const BLACK = '#1C1C1C';
+  const WHITE = '#FFFFFF';
+  const ORANGE = '#FF8C00';
+  const ORANGE_D = '#D46E00';
 
-  // Flip horizontally so the bird faces its direction of travel (left)
+  const cx = ob.x + ob.w / 2;
+  const topY = ob.y;
+  const bottomY = ob.y + ob.h;
+
+  // Petit bobbing vertical + mini waddle
+  const bob = Math.sin(frame * 0.15) * 1.5;
+  const tilt = Math.sin(frame * 0.15) * 0.08;
+  const flipperFlap = Math.sin(frame * 0.3) * 0.6;
+
   ctx.save();
-  ctx.translate(cx * 2, 0);
-  ctx.scale(-1, 1);
+  ctx.translate(cx, bottomY - 4 + bob);
+  ctx.rotate(tilt);
 
-  // Smooth wing flap using sine
-  const wingPhase = Math.sin(frame * 0.25);
-  const wingUp = wingPhase > 0;
-  const wingAngle = wingPhase * 0.7;
-
-  // --- BACK WING (behind body) ---
-  ctx.fillStyle = '#5A3FA8'; // violet fonce
-  ctx.save();
-  ctx.translate(cx - 2, cy);
-  ctx.rotate(-wingAngle);
+  // === PIEDS (orange) ===
+  ctx.fillStyle = ORANGE;
+  // Pied gauche
   ctx.beginPath();
-  ctx.ellipse(0, -6, 12, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(-4, 3, 5, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
-
-  // --- BODY (ellipse) ---
-  ctx.fillStyle = '#7B5FD6'; // violet principal
+  // Pied droit
   ctx.beginPath();
-  ctx.ellipse(cx, cy, 15, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(5, 3, 5, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Belly highlight
-  ctx.fillStyle = '#A89CE0';
+  // === CORPS (ovale noir) ===
+  const bodyH = ob.h - 6;
+  ctx.fillStyle = BLACK;
   ctx.beginPath();
-  ctx.ellipse(cx - 2, cy + 2, 10, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -bodyH / 2 + 2, ob.w / 2 - 2, bodyH / 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // --- HEAD ---
-  ctx.fillStyle = '#7B5FD6';
+  // === VENTRE BLANC ===
+  ctx.fillStyle = WHITE;
   ctx.beginPath();
-  ctx.arc(cx + 13, cy - 2, 5, 0, Math.PI * 2);
+  ctx.ellipse(0, -bodyH / 2 + 3, ob.w / 2 - 5, bodyH / 2 - 3, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // --- BEAK ---
-  ctx.fillStyle = '#FFB547'; // orange
+  // === TETE (bien distincte, plus grande) ===
+  const headY = -bodyH + 1;
+  const headR = ob.w / 2 - 1;
+  ctx.fillStyle = BLACK;
   ctx.beginPath();
-  ctx.moveTo(cx + 17, cy - 3);
-  ctx.lineTo(cx + 24, cy);
-  ctx.lineTo(cx + 17, cy + 1);
+  ctx.arc(0, headY, headR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // === BEC ORANGE (pointant vers la gauche - direction de deplacement) ===
+  ctx.fillStyle = ORANGE;
+  ctx.beginPath();
+  ctx.moveTo(-headR + 2, headY);
+  ctx.lineTo(-headR - 4, headY - 1);
+  ctx.lineTo(-headR - 4, headY + 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = ORANGE_D;
+  ctx.beginPath();
+  ctx.moveTo(-headR + 2, headY + 1);
+  ctx.lineTo(-headR - 4, headY + 2);
+  ctx.lineTo(-headR - 2, headY + 2);
   ctx.closePath();
   ctx.fill();
 
-  // --- EYE ---
-  ctx.fillStyle = '#fff';
+  // === YEUX (deux gros yeux blancs avec pupilles) ===
+  ctx.fillStyle = WHITE;
   ctx.beginPath();
-  ctx.arc(cx + 14, cy - 3, 1.6, 0, Math.PI * 2);
+  ctx.arc(-3, headY - 1, 2.8, 0, Math.PI * 2);
+  ctx.arc(3, headY - 1, 2.8, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#2D3436';
+  ctx.fillStyle = BLACK;
   ctx.beginPath();
-  ctx.arc(cx + 14.5, cy - 3, 0.9, 0, Math.PI * 2);
+  ctx.arc(-3, headY - 1, 1.5, 0, Math.PI * 2);
+  ctx.arc(3, headY - 1, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Reflet blanc dans les yeux
+  ctx.fillStyle = WHITE;
+  ctx.beginPath();
+  ctx.arc(-2.5, headY - 1.5, 0.6, 0, Math.PI * 2);
+  ctx.arc(3.5, headY - 1.5, 0.6, 0, Math.PI * 2);
   ctx.fill();
 
-  // --- FRONT WING (flapping) ---
-  ctx.fillStyle = '#7B5FD6';
+  // === NAGEOIRES (flippers) ===
+  ctx.fillStyle = BLACK;
+  // Nageoire gauche (devant)
   ctx.save();
-  ctx.translate(cx + 2, cy);
-  ctx.rotate(wingAngle);
+  ctx.translate(-ob.w / 2 + 3, -bodyH / 2);
+  ctx.rotate(flipperFlap);
   ctx.beginPath();
-  ctx.ellipse(0, wingUp ? -7 : 7, 13, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Wing accent
-  ctx.fillStyle = '#9E88E0';
-  ctx.beginPath();
-  ctx.ellipse(-1, wingUp ? -8 : 8, 9, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, 2.5, 7, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-
-  // --- TAIL ---
-  ctx.fillStyle = '#5A3FA8';
+  // Nageoire droite
+  ctx.save();
+  ctx.translate(ob.w / 2 - 3, -bodyH / 2);
+  ctx.rotate(-flipperFlap);
   ctx.beginPath();
-  ctx.moveTo(cx - 14, cy);
-  ctx.lineTo(cx - 21, cy - 4);
-  ctx.lineTo(cx - 19, cy);
-  ctx.lineTo(cx - 21, cy + 4);
-  ctx.closePath();
+  ctx.ellipse(0, 2, 2.5, 7, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }
@@ -820,9 +838,14 @@ function spawnObstacle() {
   } else if (r < 0.8) {
     ob = { x: W, type: 'double', w: 28, h: 42, bird: false };
   } else {
-    // Bird at random height
-    const birdY = Math.random() < 0.5 ? GROUND_Y - 60 : GROUND_Y - 30;
-    ob = { x: W, y: birdY, type: 'bird', w: 38, h: 18, bird: true };
+    // Pingu le pingouin en hauteur - il faut glisser dessous !
+    ob = { x: W, y: GROUND_Y - 70, type: 'bird', w: 26, h: 36, bird: true };
+    // Son "nut nut" a l'apparition
+    const pinguSound = document.getElementById('jump-sound');
+    if (pinguSound) {
+      pinguSound.currentTime = 0;
+      pinguSound.play().catch(() => {});
+    }
   }
   obstacles.push(ob);
   nextObstacleIn = 40 + Math.random() * 60;
@@ -960,10 +983,6 @@ function jump() {
     // Stretch on takeoff
     dino.squash = 1.2;
     dino.squashVel = 0.1;
-    // Play jump sound
-    const jumpSound = document.getElementById('jump-sound');
-    jumpSound.currentTime = 0;
-    jumpSound.play().catch(() => {});
   }
 }
 
