@@ -5,9 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alex Runner</title>
 <style>
+  :root {
+    --bg-start: #FFE5EC;
+    --bg-end: #E0ECFF;
+    --canvas-bg: #FFF8F2;
+    --accent: #6C5CE7;
+    --accent-2: #FF7675;
+    --text: #2D3436;
+    --muted: #9B8FB3;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #f7f7f7;
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -22,21 +31,29 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.45);
+    border-radius: 18px;
+    box-shadow: 0 10px 40px rgba(108, 92, 231, 0.18);
+    backdrop-filter: blur(8px);
   }
   canvas {
     display: block;
-    background: #f7f7f7;
+    background: var(--canvas-bg);
     width: 100%;
     height: auto;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 8px rgba(108, 92, 231, 0.08);
   }
   #score {
     position: absolute;
-    top: 10px;
-    right: 16px;
+    top: 22px;
+    right: 28px;
     font-size: 18px;
-    color: #535353;
+    color: var(--accent);
     letter-spacing: 2px;
     font-weight: bold;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
   }
   #message {
     position: absolute;
@@ -44,68 +61,93 @@
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    color: #535353;
+    color: var(--text);
     pointer-events: none;
   }
-  #message h2 { font-size: 24px; margin-bottom: 8px; }
-  #message p { font-size: 14px; }
+  #message h2 {
+    font-size: 26px;
+    margin-bottom: 8px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  #message p { font-size: 14px; color: var(--muted); }
 
   /* Birthday gate */
   #birth-screen {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: #f7f7f7;
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 10;
-    color: #535353;
+    color: var(--text);
+    border-radius: 18px;
   }
-  #birth-screen h2 { font-size: 22px; margin-bottom: 16px; }
+  #birth-screen h2 {
+    font-size: 26px;
+    margin-bottom: 16px;
+    color: var(--accent);
+    letter-spacing: 3px;
+  }
   #birth-screen input {
     font-family: 'Courier New', monospace;
     font-size: 20px;
     text-align: center;
-    padding: 8px 16px;
-    border: 2px solid #535353;
+    padding: 10px 16px;
+    border: 2px solid var(--accent);
     background: #fff;
-    color: #535353;
+    color: var(--text);
     letter-spacing: 2px;
-    width: 180px;
+    width: 200px;
     outline: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
+    transition: box-shadow 0.2s;
   }
-  #birth-screen input::placeholder { color: #b0b0b0; }
+  #birth-screen input:focus {
+    box-shadow: 0 4px 20px rgba(108, 92, 231, 0.35);
+  }
+  #birth-screen input::placeholder { color: var(--muted); }
   #birth-error {
     margin-top: 10px;
     font-size: 13px;
-    color: #c0392b;
+    color: var(--accent-2);
     height: 18px;
+    font-weight: bold;
   }
 
   /* Mobile buttons */
   #mobile-controls {
     position: relative;
     display: none;
-    gap: 10px;
+    gap: 12px;
     margin-top: 15px;
   }
   .mobile-btn {
-    padding: 12px 20px;
+    padding: 14px 24px;
     font-size: 16px;
     font-family: 'Courier New', monospace;
-    background: #535353;
-    color: #f7f7f7;
+    background: linear-gradient(135deg, var(--accent), #8B7FE8);
+    color: #fff;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
     touch-action: manipulation;
     user-select: none;
     font-weight: bold;
-    active: 0.9;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.35);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .mobile-btn#duck-btn {
+    background: linear-gradient(135deg, var(--accent-2), #FFA5A4);
+    box-shadow: 0 4px 12px rgba(255, 118, 117, 0.35);
   }
   .mobile-btn:active {
-    opacity: 0.7;
+    transform: translateY(2px);
+    box-shadow: 0 2px 6px rgba(108, 92, 231, 0.25);
   }
 
   @media (max-width: 768px) {
@@ -131,7 +173,7 @@
   </div>
   <div id="mobile-controls">
     <button class="mobile-btn" id="jump-btn">SAUTER</button>
-    <button class="mobile-btn" id="duck-btn">BAISSER</button>
+    <button class="mobile-btn" id="duck-btn">GLISSER</button>
   </div>
   <audio id="jump-sound" preload="auto">
     <source src="nut_nut.mp3" type="audio/mpeg">
@@ -427,37 +469,215 @@ function drawDino() {
   }
 }
 
+function drawCactusArm(cx, baseY, topY, width, side) {
+  // side: -1 = left, 1 = right
+  const r = width / 2;
+  const elbowY = (baseY + topY) / 2;
+  const armCx = cx + side * (r + 4);
+
+  // Rounded vertical part
+  ctx.beginPath();
+  ctx.moveTo(armCx - r, elbowY);
+  ctx.lineTo(armCx - r, topY + r);
+  ctx.arc(armCx, topY + r, r, Math.PI, 0);
+  ctx.lineTo(armCx + r, elbowY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Horizontal bend toward trunk
+  ctx.beginPath();
+  ctx.roundRect(
+    side === -1 ? armCx - r : cx,
+    elbowY,
+    Math.abs(armCx - cx) + r,
+    width,
+    r * 0.6
+  );
+  ctx.fill();
+}
+
+function drawCactusTrunk(x, width, height) {
+  const r = width / 2;
+  const topY = GROUND_Y - height;
+  ctx.beginPath();
+  ctx.moveTo(x, GROUND_Y);
+  ctx.lineTo(x, topY + r);
+  ctx.arc(x + r, topY + r, r, Math.PI, 0);
+  ctx.lineTo(x + width, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawCactusRibs(x, width, height, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  const topY = GROUND_Y - height + width / 2;
+  // Vertical rib lines
+  for (let i = 1; i < 3; i++) {
+    const rx = x + (width * i) / 3;
+    ctx.beginPath();
+    ctx.moveTo(rx, topY);
+    ctx.lineTo(rx, GROUND_Y - 2);
+    ctx.stroke();
+  }
+}
+
+function drawSpines(x, y, n, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < n; i++) {
+    const sx = x + (i * 3);
+    ctx.beginPath();
+    ctx.moveTo(sx, y);
+    ctx.lineTo(sx - 1, y - 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx, y);
+    ctx.lineTo(sx + 1, y - 2);
+    ctx.stroke();
+  }
+}
+
 function drawCactus(ob) {
-  ctx.fillStyle = '#535353';
+  const GREEN = '#3E9142';
+  const GREEN_DARK = '#2E6B32';
+  const GREEN_LIGHT = '#5FB866';
+
   if (ob.type === 'small') {
-    ctx.fillRect(ob.x + 4, GROUND_Y - 34, 10, 34);
-    ctx.fillRect(ob.x, GROUND_Y - 22, 6, 14);
-    ctx.fillRect(ob.x + 12, GROUND_Y - 28, 6, 10);
+    const x = ob.x, h = 34, w = 12;
+    ctx.fillStyle = GREEN;
+    drawCactusTrunk(x + 4, w, h);
+    drawCactusArm(x + 4 + w / 2, GROUND_Y - 22, GROUND_Y - 30, 6, -1);
+    drawCactusArm(x + 4 + w / 2, GROUND_Y - 28, GROUND_Y - 36, 6, 1);
+    // Highlight stripe
+    ctx.fillStyle = GREEN_LIGHT;
+    ctx.fillRect(x + 5, GROUND_Y - h + 7, 2, h - 9);
+    // Ribs
+    drawCactusRibs(x + 4, w, h, GREEN_DARK);
   } else if (ob.type === 'large') {
-    ctx.fillRect(ob.x + 2, GROUND_Y - 46, 14, 46);
-    ctx.fillRect(ob.x - 6, GROUND_Y - 30, 10, 16);
-    ctx.fillRect(ob.x + 14, GROUND_Y - 38, 10, 12);
+    const x = ob.x, h = 46, w = 16;
+    ctx.fillStyle = GREEN;
+    drawCactusTrunk(x + 2, w, h);
+    drawCactusArm(x + 2 + w / 2, GROUND_Y - 30, GROUND_Y - 40, 8, -1);
+    drawCactusArm(x + 2 + w / 2, GROUND_Y - 38, GROUND_Y - 48, 8, 1);
+    ctx.fillStyle = GREEN_LIGHT;
+    ctx.fillRect(x + 3, GROUND_Y - h + 9, 2, h - 11);
+    drawCactusRibs(x + 2, w, h, GREEN_DARK);
+    // Small flower on top
+    ctx.fillStyle = '#FF7675';
+    ctx.beginPath();
+    ctx.arc(x + 2 + w / 2, GROUND_Y - h - 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFE66D';
+    ctx.beginPath();
+    ctx.arc(x + 2 + w / 2, GROUND_Y - h - 2, 1.2, 0, Math.PI * 2);
+    ctx.fill();
   } else if (ob.type === 'double') {
-    ctx.fillRect(ob.x, GROUND_Y - 34, 10, 34);
-    ctx.fillRect(ob.x + 18, GROUND_Y - 42, 10, 42);
-    ctx.fillRect(ob.x + 8, GROUND_Y - 24, 12, 6);
+    // First cactus
+    ctx.fillStyle = GREEN;
+    drawCactusTrunk(ob.x, 10, 34);
+    drawCactusArm(ob.x + 5, GROUND_Y - 24, GROUND_Y - 32, 6, 1);
+    // Second cactus (taller)
+    drawCactusTrunk(ob.x + 18, 10, 42);
+    drawCactusArm(ob.x + 23, GROUND_Y - 30, GROUND_Y - 40, 6, -1);
+    // Highlights
+    ctx.fillStyle = GREEN_LIGHT;
+    ctx.fillRect(ob.x + 1, GROUND_Y - 27, 2, 24);
+    ctx.fillRect(ob.x + 19, GROUND_Y - 35, 2, 30);
+    // Ribs
+    drawCactusRibs(ob.x, 10, 34, GREEN_DARK);
+    drawCactusRibs(ob.x + 18, 10, 42, GREEN_DARK);
   }
 }
 
 function drawBird(ob) {
-  ctx.fillStyle = '#535353';
   const by = ob.y;
-  // Body
-  ctx.fillRect(ob.x, by, 30, 8);
-  // Wings animated
-  const wingFrame = Math.floor(frame / 8) % 2;
-  if (wingFrame === 0) {
-    ctx.fillRect(ob.x + 4, by - 10, 20, 10);
-  } else {
-    ctx.fillRect(ob.x + 4, by + 8, 20, 10);
-  }
-  // Beak
-  ctx.fillRect(ob.x + 30, by + 2, 8, 4);
+  const cx = ob.x + 15;
+  const cy = by + 4;
+
+  // Flip horizontally so the bird faces its direction of travel (left)
+  ctx.save();
+  ctx.translate(cx * 2, 0);
+  ctx.scale(-1, 1);
+
+  // Smooth wing flap using sine
+  const wingPhase = Math.sin(frame * 0.25);
+  const wingUp = wingPhase > 0;
+  const wingAngle = wingPhase * 0.7;
+
+  // --- BACK WING (behind body) ---
+  ctx.fillStyle = '#5A3FA8'; // violet fonce
+  ctx.save();
+  ctx.translate(cx - 2, cy);
+  ctx.rotate(-wingAngle);
+  ctx.beginPath();
+  ctx.ellipse(0, -6, 12, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // --- BODY (ellipse) ---
+  ctx.fillStyle = '#7B5FD6'; // violet principal
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 15, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Belly highlight
+  ctx.fillStyle = '#A89CE0';
+  ctx.beginPath();
+  ctx.ellipse(cx - 2, cy + 2, 10, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- HEAD ---
+  ctx.fillStyle = '#7B5FD6';
+  ctx.beginPath();
+  ctx.arc(cx + 13, cy - 2, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- BEAK ---
+  ctx.fillStyle = '#FFB547'; // orange
+  ctx.beginPath();
+  ctx.moveTo(cx + 17, cy - 3);
+  ctx.lineTo(cx + 24, cy);
+  ctx.lineTo(cx + 17, cy + 1);
+  ctx.closePath();
+  ctx.fill();
+
+  // --- EYE ---
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(cx + 14, cy - 3, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2D3436';
+  ctx.beginPath();
+  ctx.arc(cx + 14.5, cy - 3, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- FRONT WING (flapping) ---
+  ctx.fillStyle = '#7B5FD6';
+  ctx.save();
+  ctx.translate(cx + 2, cy);
+  ctx.rotate(wingAngle);
+  ctx.beginPath();
+  ctx.ellipse(0, wingUp ? -7 : 7, 13, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Wing accent
+  ctx.fillStyle = '#9E88E0';
+  ctx.beginPath();
+  ctx.ellipse(-1, wingUp ? -8 : 8, 9, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // --- TAIL ---
+  ctx.fillStyle = '#5A3FA8';
+  ctx.beginPath();
+  ctx.moveTo(cx - 14, cy);
+  ctx.lineTo(cx - 21, cy - 4);
+  ctx.lineTo(cx - 19, cy);
+  ctx.lineTo(cx - 21, cy + 4);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
 }
 
 function drawGround() {
