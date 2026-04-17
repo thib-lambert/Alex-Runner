@@ -328,9 +328,62 @@ function drawLimb(pivotX, pivotY, w, h, angle) {
 
 // Character colors
 const COL_SKIN = '#E8C39E';
-const COL_TSHIRT = '#3B7DD8';
+const COL_JACKET = '#1E5AA8';
+const COL_JACKET_LIGHT = '#4A8BD8';
+const COL_JACKET_DARK = '#12407A';
+const COL_COLLAR = '#F2F6FA';
 const COL_SHORT = '#D63031';
 const COL_SHOES = '#2D3436';
+
+// Draws a puffer jacket (matelassée) at local coords (x, y, w, h).
+// side: 'front' shows a central zipper; 'side' hides it (profile view).
+function drawJacket(x, y, w, h, side) {
+  // Main body
+  ctx.fillStyle = COL_JACKET;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 4);
+  ctx.fill();
+
+  // Quilted segments: 3 horizontal bands with highlight + shadow line
+  const segH = h / 3;
+  for (let i = 0; i < 3; i++) {
+    const yTop = y + segH * i;
+    // Soft highlight at top of each segment
+    ctx.fillStyle = COL_JACKET_LIGHT;
+    ctx.beginPath();
+    ctx.roundRect(x + 2, yTop + 1, w - 4, 2, 1);
+    ctx.fill();
+  }
+  // Dark separator lines between segments
+  ctx.strokeStyle = COL_JACKET_DARK;
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 3; i++) {
+    const yi = y + segH * i;
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, yi);
+    ctx.lineTo(x + w - 1.5, yi);
+    ctx.stroke();
+  }
+
+  // Fluffy collar (fourrure claire au col)
+  ctx.fillStyle = COL_COLLAR;
+  ctx.beginPath();
+  ctx.roundRect(x + 1, y - 3, w - 2, 5, 2);
+  ctx.fill();
+  // Tiny shadow under collar
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+  ctx.fillRect(x + 2, y + 1, w - 4, 1);
+
+  // Central zipper (only in front view)
+  if (side === 'front') {
+    ctx.strokeStyle = COL_JACKET_DARK;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y);
+    ctx.lineTo(x + w / 2, y + h - 1);
+    ctx.stroke();
+  }
+}
 
 function drawDino() {
   const HEAD_SIZE = 36;
@@ -386,14 +439,11 @@ function drawDino() {
     const cx = dino.x + 20;
     const cy = GROUND_Y;
 
-    // Torso (tilted back ~30deg) - T-shirt bleu
-    ctx.fillStyle = COL_TSHIRT;
+    // Torso (tilted back ~30deg) - doudoune bleue
     ctx.save();
     ctx.translate(cx, cy - 12);
     ctx.rotate(-0.4);
-    ctx.beginPath();
-    ctx.roundRect(-8, -12, 16, 22, 3);
-    ctx.fill();
+    drawJacket(-9, -12, 18, 22, 'front');
     ctx.restore();
 
     // Legs extended forward (feet first) - beige
@@ -465,11 +515,8 @@ function drawDino() {
       const shoulderLX = dino.x + 4;
       const shoulderRX = dino.x + 24;
 
-      // Torso
-      ctx.fillStyle = COL_TSHIRT;
-      ctx.beginPath();
-      ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 8, 18, 23, 3);
-      ctx.fill();
+      // Torso (doudoune)
+      drawJacket(dino.x + 4, bodyTop + HEAD_SIZE - 8, 20, 23, 'front');
 
       // Legs bent slightly back - beige
       ctx.fillStyle = COL_SKIN;
@@ -503,11 +550,8 @@ function drawDino() {
       // BACK arm (darker)
       drawLimb(shoulderX, shoulderY, 4, ARM_LEN, backArmAngle);
 
-      // Torso
-      ctx.fillStyle = COL_TSHIRT;
-      ctx.beginPath();
-      ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 8, 18, 23, 3);
-      ctx.fill();
+      // Torso (doudoune - vue de cote, pas de zipper visible)
+      drawJacket(dino.x + 4, bodyTop + HEAD_SIZE - 8, 20, 23, 'side');
 
       // Short rouge
       ctx.fillStyle = COL_SHORT;
