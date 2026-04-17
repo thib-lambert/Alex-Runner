@@ -6,13 +6,13 @@
 <title>Alex Runner</title>
 <style>
   :root {
-    --bg-start: #FFE5EC;
-    --bg-end: #E0ECFF;
-    --canvas-bg: #FFF8F2;
-    --accent: #6C5CE7;
-    --accent-2: #FF7675;
-    --text: #2D3436;
-    --muted: #9B8FB3;
+    --bg-start: #D6EAF8;
+    --bg-end: #F0F8FF;
+    --canvas-bg: #F2F9FF;
+    --accent: #4A90E2;
+    --accent-2: #E74C6B;
+    --text: #1A3A5C;
+    --muted: #8BA8C4;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -34,7 +34,7 @@
     padding: 12px;
     background: rgba(255, 255, 255, 0.45);
     border-radius: 18px;
-    box-shadow: 0 10px 40px rgba(108, 92, 231, 0.18);
+    box-shadow: 0 10px 40px rgba(74, 144, 226, 0.25);
     backdrop-filter: blur(8px);
   }
   canvas {
@@ -43,7 +43,7 @@
     width: 100%;
     height: auto;
     border-radius: 12px;
-    box-shadow: inset 0 2px 8px rgba(108, 92, 231, 0.08);
+    box-shadow: inset 0 2px 8px rgba(74, 144, 226, 0.12);
   }
   #score {
     position: absolute;
@@ -103,11 +103,11 @@
     width: 200px;
     outline: none;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
     transition: box-shadow 0.2s;
   }
   #birth-screen input:focus {
-    box-shadow: 0 4px 20px rgba(108, 92, 231, 0.35);
+    box-shadow: 0 4px 20px rgba(74, 144, 226, 0.4);
   }
   #birth-screen input::placeholder { color: var(--muted); }
   #birth-error {
@@ -129,7 +129,7 @@
     padding: 14px 24px;
     font-size: 16px;
     font-family: 'Courier New', monospace;
-    background: linear-gradient(135deg, var(--accent), #8B7FE8);
+    background: linear-gradient(135deg, var(--accent), #7FB8F0);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -138,16 +138,16 @@
     user-select: none;
     font-weight: bold;
     letter-spacing: 1px;
-    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.35);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
     transition: transform 0.1s, box-shadow 0.1s;
   }
   .mobile-btn#duck-btn {
-    background: linear-gradient(135deg, var(--accent-2), #FFA5A4);
-    box-shadow: 0 4px 12px rgba(255, 118, 117, 0.35);
+    background: linear-gradient(135deg, var(--accent-2), #F5808F);
+    box-shadow: 0 4px 12px rgba(231, 76, 107, 0.35);
   }
   .mobile-btn:active {
     transform: translateY(2px);
-    box-shadow: 0 2px 6px rgba(108, 92, 231, 0.25);
+    box-shadow: 0 2px 6px rgba(74, 144, 226, 0.3);
   }
 
   @media (max-width: 768px) {
@@ -277,6 +277,18 @@ for (let i = 0; i < 5; i++) {
     x: Math.random() * W,
     y: 15 + Math.random() * 60,
     scale: 0.7 + Math.random() * 0.7
+  });
+}
+
+// Snowflakes
+let snowflakes = [];
+for (let i = 0; i < 40; i++) {
+  snowflakes.push({
+    x: Math.random() * W,
+    y: Math.random() * GROUND_Y,
+    r: 0.8 + Math.random() * 1.8,
+    vy: 0.3 + Math.random() * 0.8,
+    drift: Math.random() * Math.PI * 2
   });
 }
 
@@ -516,124 +528,77 @@ function drawDino() {
   }
 }
 
-function drawCactusArm(cx, baseY, topY, width, side) {
-  // side: -1 = left, 1 = right
-  const r = width / 2;
-  const elbowY = (baseY + topY) / 2;
-  const armCx = cx + side * (r + 4);
+// Dessine un pic de glace (base large, pointe au sommet)
+function drawIceSpike(baseX, baseW, height) {
+  const ICE = '#7EC8E3';
+  const ICE_DARK = '#4A9FC9';
+  const ICE_LIGHT = '#C5E7F5';
+  const ICE_SHINE = '#FFFFFF';
 
-  // Rounded vertical part
-  ctx.beginPath();
-  ctx.moveTo(armCx - r, elbowY);
-  ctx.lineTo(armCx - r, topY + r);
-  ctx.arc(armCx, topY + r, r, Math.PI, 0);
-  ctx.lineTo(armCx + r, elbowY);
-  ctx.closePath();
-  ctx.fill();
-
-  // Horizontal bend toward trunk
-  ctx.beginPath();
-  ctx.roundRect(
-    side === -1 ? armCx - r : cx,
-    elbowY,
-    Math.abs(armCx - cx) + r,
-    width,
-    r * 0.6
-  );
-  ctx.fill();
-}
-
-function drawCactusTrunk(x, width, height) {
-  const r = width / 2;
   const topY = GROUND_Y - height;
+  const cx = baseX + baseW / 2;
+
+  // Ombre du pic (face sombre droite)
+  ctx.fillStyle = ICE_DARK;
   ctx.beginPath();
-  ctx.moveTo(x, GROUND_Y);
-  ctx.lineTo(x, topY + r);
-  ctx.arc(x + r, topY + r, r, Math.PI, 0);
-  ctx.lineTo(x + width, GROUND_Y);
+  ctx.moveTo(baseX, GROUND_Y);
+  ctx.lineTo(cx, topY);
+  ctx.lineTo(baseX + baseW, GROUND_Y);
   ctx.closePath();
   ctx.fill();
-}
 
-function drawCactusRibs(x, width, height, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  const topY = GROUND_Y - height + width / 2;
-  // Vertical rib lines
-  for (let i = 1; i < 3; i++) {
-    const rx = x + (width * i) / 3;
-    ctx.beginPath();
-    ctx.moveTo(rx, topY);
-    ctx.lineTo(rx, GROUND_Y - 2);
-    ctx.stroke();
-  }
-}
+  // Face claire (gauche du pic)
+  ctx.fillStyle = ICE;
+  ctx.beginPath();
+  ctx.moveTo(baseX, GROUND_Y);
+  ctx.lineTo(cx, topY);
+  ctx.lineTo(cx, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
 
-function drawSpines(x, y, n, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < n; i++) {
-    const sx = x + (i * 3);
-    ctx.beginPath();
-    ctx.moveTo(sx, y);
-    ctx.lineTo(sx - 1, y - 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(sx, y);
-    ctx.lineTo(sx + 1, y - 2);
-    ctx.stroke();
-  }
+  // Facette très claire (reflet gauche)
+  ctx.fillStyle = ICE_LIGHT;
+  ctx.beginPath();
+  ctx.moveTo(baseX + baseW * 0.15, GROUND_Y);
+  ctx.lineTo(cx, topY);
+  ctx.lineTo(cx - baseW * 0.12, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Reflet blanc fin au sommet
+  ctx.strokeStyle = ICE_SHINE;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 1, topY + 3);
+  ctx.lineTo(cx - baseW * 0.2, GROUND_Y - 4);
+  ctx.stroke();
+
+  // Neige à la base
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.ellipse(cx, GROUND_Y, baseW * 0.6, 3, 0, Math.PI, 0);
+  ctx.fill();
 }
 
 function drawCactus(ob) {
-  const GREEN = '#3E9142';
-  const GREEN_DARK = '#2E6B32';
-  const GREEN_LIGHT = '#5FB866';
-
   if (ob.type === 'small') {
-    const x = ob.x, h = 34, w = 12;
-    ctx.fillStyle = GREEN;
-    drawCactusTrunk(x + 4, w, h);
-    drawCactusArm(x + 4 + w / 2, GROUND_Y - 22, GROUND_Y - 30, 6, -1);
-    drawCactusArm(x + 4 + w / 2, GROUND_Y - 28, GROUND_Y - 36, 6, 1);
-    // Highlight stripe
-    ctx.fillStyle = GREEN_LIGHT;
-    ctx.fillRect(x + 5, GROUND_Y - h + 7, 2, h - 9);
-    // Ribs
-    drawCactusRibs(x + 4, w, h, GREEN_DARK);
+    drawIceSpike(ob.x + 3, 12, 34);
   } else if (ob.type === 'large') {
-    const x = ob.x, h = 46, w = 16;
-    ctx.fillStyle = GREEN;
-    drawCactusTrunk(x + 2, w, h);
-    drawCactusArm(x + 2 + w / 2, GROUND_Y - 30, GROUND_Y - 40, 8, -1);
-    drawCactusArm(x + 2 + w / 2, GROUND_Y - 38, GROUND_Y - 48, 8, 1);
-    ctx.fillStyle = GREEN_LIGHT;
-    ctx.fillRect(x + 3, GROUND_Y - h + 9, 2, h - 11);
-    drawCactusRibs(x + 2, w, h, GREEN_DARK);
-    // Small flower on top
-    ctx.fillStyle = '#FF7675';
+    drawIceSpike(ob.x + 2, 20, 46);
+    // Petit cristal brillant au sommet (accent couleur)
+    const cx = ob.x + 2 + 10;
+    const topY = GROUND_Y - 46;
+    ctx.fillStyle = '#FF7F9E';
     ctx.beginPath();
-    ctx.arc(x + 2 + w / 2, GROUND_Y - h - 2, 3, 0, Math.PI * 2);
+    ctx.arc(cx, topY - 3, 2.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#FFE66D';
+    ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.arc(x + 2 + w / 2, GROUND_Y - h - 2, 1.2, 0, Math.PI * 2);
+    ctx.arc(cx - 0.5, topY - 3.5, 1, 0, Math.PI * 2);
     ctx.fill();
   } else if (ob.type === 'double') {
-    // First cactus
-    ctx.fillStyle = GREEN;
-    drawCactusTrunk(ob.x, 10, 34);
-    drawCactusArm(ob.x + 5, GROUND_Y - 24, GROUND_Y - 32, 6, 1);
-    // Second cactus (taller)
-    drawCactusTrunk(ob.x + 18, 10, 42);
-    drawCactusArm(ob.x + 23, GROUND_Y - 30, GROUND_Y - 40, 6, -1);
-    // Highlights
-    ctx.fillStyle = GREEN_LIGHT;
-    ctx.fillRect(ob.x + 1, GROUND_Y - 27, 2, 24);
-    ctx.fillRect(ob.x + 19, GROUND_Y - 35, 2, 30);
-    // Ribs
-    drawCactusRibs(ob.x, 10, 34, GREEN_DARK);
-    drawCactusRibs(ob.x + 18, 10, 42, GREEN_DARK);
+    drawIceSpike(ob.x, 12, 34);
+    drawIceSpike(ob.x + 16, 12, 42);
   }
 }
 
@@ -746,45 +711,62 @@ function drawBird(ob) {
 }
 
 function drawGround() {
-  // Soft earth gradient below the line
+  // Icy ground gradient (white snow → cool blue shadow)
   const grd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
-  grd.addColorStop(0, '#F5C9A8');
-  grd.addColorStop(1, '#E8AE88');
+  grd.addColorStop(0, '#F5FBFF');
+  grd.addColorStop(1, '#B8D4E8');
   ctx.fillStyle = grd;
   ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-  // Ground line
-  ctx.strokeStyle = '#C88A6B';
+  // Ground line (icy blue)
+  ctx.strokeStyle = '#7FB0D4';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y);
   ctx.lineTo(W, GROUND_Y);
   ctx.stroke();
 
-  // Pebbles/grains (warm tones)
+  // Ice crystals / sparkles (cool tones)
   for (let i = 0; i < W + 20; i += 3) {
     const xp = (i - groundOffset % 20);
     if (Math.sin(xp * 0.5) > 0.7) {
-      ctx.fillStyle = '#B87856';
+      ctx.fillStyle = '#A8C8DE';
       ctx.fillRect(xp, GROUND_Y + 4 + (xp % 5), 2, 1);
     }
   }
 
-  // Scattered grass tufts (violet-green)
-  ctx.strokeStyle = '#7B9E57';
+  // Ice cracks (subtle darker blue lines)
+  ctx.strokeStyle = 'rgba(120, 160, 195, 0.35)';
   ctx.lineWidth = 1;
+  for (let i = 0; i < W + 60; i += 60) {
+    const xp = ((i - groundOffset * 0.8) % (W + 60));
+    if (xp < 0) continue;
+    ctx.beginPath();
+    ctx.moveTo(xp, GROUND_Y + 6);
+    ctx.lineTo(xp + 8, GROUND_Y + 10);
+    ctx.lineTo(xp + 4, GROUND_Y + 18);
+    ctx.lineTo(xp + 14, GROUND_Y + 24);
+    ctx.stroke();
+  }
+
+  // Snow bumps along the ground line
+  ctx.fillStyle = '#FFFFFF';
   for (let i = 0; i < W + 40; i += 40) {
     const xp = ((i - groundOffset * 0.8) % (W + 40));
     if (xp < 0) continue;
     ctx.beginPath();
-    ctx.moveTo(xp, GROUND_Y);
-    ctx.lineTo(xp - 1, GROUND_Y - 3);
-    ctx.moveTo(xp, GROUND_Y);
-    ctx.lineTo(xp, GROUND_Y - 4);
-    ctx.moveTo(xp, GROUND_Y);
-    ctx.lineTo(xp + 1, GROUND_Y - 3);
-    ctx.stroke();
+    ctx.arc(xp, GROUND_Y, 3, Math.PI, 0);
+    ctx.fill();
   }
+}
+
+function drawSnow() {
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  snowflakes.forEach(f => {
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 function drawClouds() {
@@ -794,8 +776,8 @@ function drawClouds() {
     ctx.translate(c.x, c.y);
     ctx.scale(s, s);
 
-    // Soft shadow underneath
-    ctx.fillStyle = 'rgba(108, 92, 231, 0.08)';
+    // Soft shadow underneath (cool blue)
+    ctx.fillStyle = 'rgba(90, 140, 190, 0.12)';
     ctx.beginPath();
     ctx.ellipse(22, 14, 28, 5, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -810,15 +792,15 @@ function drawClouds() {
     ctx.arc(16, 13, 9, 0, Math.PI * 2);
     ctx.fill();
 
-    // Subtle highlight (top-left, lighter tint)
-    ctx.fillStyle = 'rgba(255, 228, 240, 0.6)';
+    // Subtle icy highlight (top-left)
+    ctx.fillStyle = 'rgba(225, 240, 255, 0.7)';
     ctx.beginPath();
     ctx.arc(20, 3, 7, 0, Math.PI * 2);
     ctx.arc(12, 7, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Soft lavender tint underneath (depth)
-    ctx.fillStyle = 'rgba(180, 170, 220, 0.25)';
+    // Cool blue underside (depth)
+    ctx.fillStyle = 'rgba(150, 185, 215, 0.3)';
     ctx.beginPath();
     ctx.arc(28, 16, 9, 0, Math.PI);
     ctx.arc(16, 16, 7, 0, Math.PI);
@@ -941,26 +923,63 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, W, H);
 
-  // Soft sky gradient (pink → blue) matching the UI palette
+  // Soft icy sky gradient (pale blue → white)
   const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-  sky.addColorStop(0, '#FFE5EC');
-  sky.addColorStop(0.5, '#F4E9FF');
-  sky.addColorStop(1, '#E0ECFF');
+  sky.addColorStop(0, '#BCDCF5');
+  sky.addColorStop(0.5, '#DEEFFB');
+  sky.addColorStop(1, '#F4FAFF');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, GROUND_Y);
 
-  // Distant sun/halo
-  ctx.fillStyle = 'rgba(255, 200, 180, 0.35)';
+  // Distant cold sun/halo (pale icy blue-white)
+  ctx.fillStyle = 'rgba(220, 240, 255, 0.55)';
   ctx.beginPath();
   ctx.arc(W - 110, 55, 40, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255, 180, 160, 0.5)';
+  ctx.fillStyle = 'rgba(235, 248, 255, 0.85)';
   ctx.beginPath();
   ctx.arc(W - 110, 55, 24, 0, Math.PI * 2);
   ctx.fill();
 
+  // Distant snowy mountains silhouette
+  ctx.fillStyle = 'rgba(170, 200, 225, 0.55)';
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  ctx.lineTo(60, 150);
+  ctx.lineTo(130, 180);
+  ctx.lineTo(210, 130);
+  ctx.lineTo(290, 170);
+  ctx.lineTo(360, 150);
+  ctx.lineTo(440, 185);
+  ctx.lineTo(520, 140);
+  ctx.lineTo(610, 175);
+  ctx.lineTo(690, 145);
+  ctx.lineTo(770, 180);
+  ctx.lineTo(W, 160);
+  ctx.lineTo(W, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Snowy peaks (white caps)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.beginPath();
+  ctx.moveTo(210, 130);
+  ctx.lineTo(225, 145);
+  ctx.lineTo(195, 145);
+  ctx.closePath();
+  ctx.moveTo(520, 140);
+  ctx.lineTo(538, 158);
+  ctx.lineTo(505, 158);
+  ctx.closePath();
+  ctx.moveTo(690, 145);
+  ctx.lineTo(705, 160);
+  ctx.lineTo(677, 160);
+  ctx.closePath();
+  ctx.fill();
+
   drawClouds();
   drawGround();
+  drawSnow();
 
   obstacles.forEach(ob => {
     if (ob.bird) drawBird(ob);
@@ -970,8 +989,21 @@ function draw() {
   drawDino();
 }
 
+function animateSnow() {
+  // Snowflakes always drift, even when game is idle
+  snowflakes.forEach(f => {
+    f.drift += 0.02;
+    const scroll = gameState === 'running' ? speed * 0.15 : 0.3;
+    f.x -= scroll + Math.sin(f.drift) * 0.3;
+    f.y += f.vy;
+    if (f.y > GROUND_Y) { f.y = -2; f.x = Math.random() * W; }
+    if (f.x < -5) f.x = W + 5;
+  });
+}
+
 function loop() {
   update();
+  animateSnow();
   draw();
   requestAnimationFrame(loop);
 }
