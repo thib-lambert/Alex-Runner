@@ -863,6 +863,39 @@ function drawClouds() {
   });
 }
 
+// Swiss flag planted on a peak (peakX, peakY = tip of the mountain)
+function drawSwissFlag(peakX, peakY) {
+  // Pole
+  const poleTop = peakY - 18;
+  ctx.strokeStyle = '#4A4A4A';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(peakX, peakY);
+  ctx.lineTo(peakX, poleTop);
+  ctx.stroke();
+
+  // Flag waving slightly (sine-based on frame)
+  const wave = Math.sin(frame * 0.08 + peakX * 0.1) * 0.5;
+  const fw = 10, fh = 8;
+  const flagX = peakX + 1;
+  const flagY = poleTop;
+
+  // Red background
+  ctx.fillStyle = '#DA291C';
+  ctx.beginPath();
+  ctx.moveTo(flagX, flagY);
+  ctx.lineTo(flagX + fw, flagY + wave);
+  ctx.lineTo(flagX + fw, flagY + fh + wave);
+  ctx.lineTo(flagX, flagY + fh);
+  ctx.closePath();
+  ctx.fill();
+
+  // White cross
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(flagX + 1, flagY + fh / 2 - 1, fw - 3, 1.5);
+  ctx.fillRect(flagX + fw / 2 - 1, flagY + 1.5, 1.5, fh - 3);
+}
+
 function spawnObstacle() {
   // Avoid unplayable overlaps: skip spawn if last obstacle is still too close
   if (obstacles.length > 0) {
@@ -1046,6 +1079,11 @@ function draw() {
   ctx.lineTo(677, 160);
   ctx.closePath();
   ctx.fill();
+
+  // Swiss flags on each snowy peak
+  drawSwissFlag(210, 130);
+  drawSwissFlag(520, 140);
+  drawSwissFlag(690, 145);
 
   drawClouds();
   drawGround();
