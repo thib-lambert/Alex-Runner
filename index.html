@@ -272,8 +272,12 @@ let nextObstacleIn = 0;
 
 // Clouds
 let clouds = [];
-for (let i = 0; i < 4; i++) {
-  clouds.push({ x: Math.random() * W, y: 20 + Math.random() * 50 });
+for (let i = 0; i < 5; i++) {
+  clouds.push({
+    x: Math.random() * W,
+    y: 15 + Math.random() * 60,
+    scale: 0.7 + Math.random() * 0.7
+  });
 }
 
 function reset() {
@@ -681,23 +685,85 @@ function drawBird(ob) {
 }
 
 function drawGround() {
-  ctx.fillStyle = '#535353';
-  ctx.fillRect(0, GROUND_Y, W, 1);
-  // Ground texture
+  // Soft earth gradient below the line
+  const grd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  grd.addColorStop(0, '#F5C9A8');
+  grd.addColorStop(1, '#E8AE88');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+  // Ground line
+  ctx.strokeStyle = '#C88A6B';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  ctx.lineTo(W, GROUND_Y);
+  ctx.stroke();
+
+  // Pebbles/grains (warm tones)
   for (let i = 0; i < W + 20; i += 3) {
     const xp = (i - groundOffset % 20);
     if (Math.sin(xp * 0.5) > 0.7) {
+      ctx.fillStyle = '#B87856';
       ctx.fillRect(xp, GROUND_Y + 4 + (xp % 5), 2, 1);
     }
+  }
+
+  // Scattered grass tufts (violet-green)
+  ctx.strokeStyle = '#7B9E57';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < W + 40; i += 40) {
+    const xp = ((i - groundOffset * 0.8) % (W + 40));
+    if (xp < 0) continue;
+    ctx.beginPath();
+    ctx.moveTo(xp, GROUND_Y);
+    ctx.lineTo(xp - 1, GROUND_Y - 3);
+    ctx.moveTo(xp, GROUND_Y);
+    ctx.lineTo(xp, GROUND_Y - 4);
+    ctx.moveTo(xp, GROUND_Y);
+    ctx.lineTo(xp + 1, GROUND_Y - 3);
+    ctx.stroke();
   }
 }
 
 function drawClouds() {
-  ctx.fillStyle = '#d4d4d4';
   clouds.forEach(c => {
-    ctx.fillRect(c.x, c.y, 40, 10);
-    ctx.fillRect(c.x + 8, c.y - 6, 24, 8);
-    ctx.fillRect(c.x + 4, c.y + 8, 30, 6);
+    const s = c.scale || 1;
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.scale(s, s);
+
+    // Soft shadow underneath
+    ctx.fillStyle = 'rgba(108, 92, 231, 0.08)';
+    ctx.beginPath();
+    ctx.ellipse(22, 14, 28, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main cloud body (stacked circles for puffy shape)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(10, 10, 10, 0, Math.PI * 2);
+    ctx.arc(22, 6, 13, 0, Math.PI * 2);
+    ctx.arc(36, 9, 10, 0, Math.PI * 2);
+    ctx.arc(28, 13, 11, 0, Math.PI * 2);
+    ctx.arc(16, 13, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subtle highlight (top-left, lighter tint)
+    ctx.fillStyle = 'rgba(255, 228, 240, 0.6)';
+    ctx.beginPath();
+    ctx.arc(20, 3, 7, 0, Math.PI * 2);
+    ctx.arc(12, 7, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Soft lavender tint underneath (depth)
+    ctx.fillStyle = 'rgba(180, 170, 220, 0.25)';
+    ctx.beginPath();
+    ctx.arc(28, 16, 9, 0, Math.PI);
+    ctx.arc(16, 16, 7, 0, Math.PI);
+    ctx.fill();
+
+    ctx.restore();
   });
 }
 
@@ -808,6 +874,25 @@ function update() {
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
+
+  // Soft sky gradient (pink → blue) matching the UI palette
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#FFE5EC');
+  sky.addColorStop(0.5, '#F4E9FF');
+  sky.addColorStop(1, '#E0ECFF');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Distant sun/halo
+  ctx.fillStyle = 'rgba(255, 200, 180, 0.35)';
+  ctx.beginPath();
+  ctx.arc(W - 110, 55, 40, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 180, 160, 0.5)';
+  ctx.beginPath();
+  ctx.arc(W - 110, 55, 24, 0, Math.PI * 2);
+  ctx.fill();
+
   drawClouds();
   drawGround();
 
