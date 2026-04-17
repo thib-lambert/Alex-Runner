@@ -314,8 +314,13 @@ function drawLimb(pivotX, pivotY, w, h, angle) {
   ctx.restore();
 }
 
+// Character colors
+const COL_SKIN = '#E8C39E';
+const COL_TSHIRT = '#3B7DD8';
+const COL_SHORT = '#D63031';
+const COL_SHOES = '#2D3436';
+
 function drawDino() {
-  ctx.fillStyle = '#535353';
   const HEAD_SIZE = 36;
 
   // Update running cycle (speed-dependent for realistic cadence)
@@ -360,9 +365,8 @@ function drawDino() {
     const cx = dino.x + 20;
     const cy = GROUND_Y;
 
-    ctx.fillStyle = '#535353';
-
-    // Torso (tilted back ~30deg)
+    // Torso (tilted back ~30deg) - T-shirt bleu
+    ctx.fillStyle = COL_TSHIRT;
     ctx.save();
     ctx.translate(cx, cy - 12);
     ctx.rotate(-0.4);
@@ -371,18 +375,29 @@ function drawDino() {
     ctx.fill();
     ctx.restore();
 
-    // Legs extended forward (feet first)
+    // Legs extended forward (feet first) - beige
+    ctx.fillStyle = COL_SKIN;
     const hipX = cx + 5;
     const hipY = cy - 6;
-    drawLimb(hipX, hipY, 7, 16, -1.2); // upper leg forward
-    drawLimb(hipX + 2, hipY, 7, 16, -1.35); // second leg slightly different
+    drawLimb(hipX, hipY, 7, 16, -1.2);
+    drawLimb(hipX + 2, hipY, 7, 16, -1.35);
 
-    // Left arm raised to the sky (behind the body)
+    // Short rouge par-dessus la hanche (petit carre tourne)
+    ctx.fillStyle = COL_SHORT;
+    ctx.save();
+    ctx.translate(hipX + 1, hipY);
+    ctx.rotate(-1.25);
+    ctx.beginPath();
+    ctx.roundRect(-5, -4, 10, 10, 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Arms - beige
+    ctx.fillStyle = COL_SKIN;
     const shoulderLX = cx - 8;
     const shoulderLY = cy - 20;
     drawLimb(shoulderLX, shoulderLY, 5, 13, 2.6);
 
-    // Right arm trailing back low
     const shoulderRX = cx - 4;
     const shoulderRY = cy - 14;
     drawLimb(shoulderRX, shoulderRY, 5, 10, 0.8);
@@ -416,47 +431,75 @@ function drawDino() {
 
     const bodyTop = dino.y - dino.h;
 
-    // Torso
-    ctx.fillStyle = '#535353';
-    ctx.beginPath();
-    ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 8, 18, 23, 3);
-    ctx.fill();
-
-    // === LEGS (smooth sine stride, pendulum from hip) ===
     const hipY = bodyTop + HEAD_SIZE + 15;
-    const hipLX = dino.x + 8;
-    const hipRX = dino.x + 18;
+    const shoulderY = bodyTop + HEAD_SIZE + 3;
     const LEG_LEN = 16;
+    const ARM_LEN = 15;
+    const SKIN_BACK = '#C99E78';
 
     if (dino.jumping) {
-      // Legs slightly bent backwards
+      // === FRONT VIEW (saut) : deux jambes + deux bras en Y ===
+      const hipLX = dino.x + 8;
+      const hipRX = dino.x + 20;
+      const shoulderLX = dino.x + 4;
+      const shoulderRX = dino.x + 24;
+
+      // Torso
+      ctx.fillStyle = COL_TSHIRT;
+      ctx.beginPath();
+      ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 8, 18, 23, 3);
+      ctx.fill();
+
+      // Legs bent slightly back - beige
+      ctx.fillStyle = COL_SKIN;
       drawLimb(hipLX, hipY, 6, LEG_LEN, 0.35);
       drawLimb(hipRX, hipY, 6, LEG_LEN, 0.25);
+
+      // Short rouge
+      ctx.fillStyle = COL_SHORT;
+      ctx.beginPath();
+      ctx.roundRect(dino.x + 5, hipY - 2, 18, 9, 3);
+      ctx.fill();
+
+      // Arms in Y (outward)
+      ctx.fillStyle = COL_SKIN;
+      drawLimb(shoulderLX, shoulderY, 5, ARM_LEN, 2.5);
+      drawLimb(shoulderRX, shoulderY, 5, ARM_LEN, -2.5);
     } else {
-      // Leg angles: inverted so positive angle = leg forward visually
-      const legAngleL = -legSin * 0.4;
-      const legAngleR = legSin * 0.4;
+      // === SIDE VIEW (course) : membre arriere -> torse -> membre avant ===
+      const hipX = dino.x + 14;
+      const shoulderX = dino.x + 14;
 
-      drawLimb(hipLX, hipY, 7, LEG_LEN, legAngleL);
-      drawLimb(hipRX, hipY, 7, LEG_LEN, legAngleR);
+      const frontLegAngle = legSin * 0.4;
+      const backLegAngle = -legSin * 0.4;
+      const frontArmAngle = -legSin * 0.55;
+      const backArmAngle = legSin * 0.55;
 
-    }
+      // BACK leg (darker)
+      ctx.fillStyle = SKIN_BACK;
+      drawLimb(hipX, hipY, 6, LEG_LEN, backLegAngle);
 
-    // === ARMS (pendulum from shoulder, opposite to legs) ===
-    const shoulderY = bodyTop + HEAD_SIZE + 3;
-    const shoulderLX = dino.x + 4;
-    const shoulderRX = dino.x + 24;
+      // BACK arm (darker)
+      drawLimb(shoulderX, shoulderY, 4, ARM_LEN, backArmAngle);
 
-    if (dino.jumping) {
-      // Arms raised up in Y shape (inverted axis)
-      drawLimb(shoulderLX, shoulderY, 5, 13, 2.5);
-      drawLimb(shoulderRX, shoulderY, 5, 13, -2.5);
-    } else {
-      // Cross-body sync: left arm opposite to left leg
-      const armAngleL = legSin * 0.35;
-      const armAngleR = -legSin * 0.35;
-      drawLimb(shoulderLX, shoulderY, 5, 13, armAngleL);
-      drawLimb(shoulderRX, shoulderY, 5, 13, armAngleR);
+      // Torso
+      ctx.fillStyle = COL_TSHIRT;
+      ctx.beginPath();
+      ctx.roundRect(dino.x + 5, bodyTop + HEAD_SIZE - 8, 18, 23, 3);
+      ctx.fill();
+
+      // Short rouge
+      ctx.fillStyle = COL_SHORT;
+      ctx.beginPath();
+      ctx.roundRect(dino.x + 5, hipY - 2, 18, 9, 3);
+      ctx.fill();
+
+      // FRONT leg (normal)
+      ctx.fillStyle = COL_SKIN;
+      drawLimb(hipX, hipY, 7, LEG_LEN, frontLegAngle);
+
+      // FRONT arm (normal)
+      drawLimb(shoulderX, shoulderY, 5, ARM_LEN, frontArmAngle);
     }
 
     // Head (photo) with slight bob - drawn last so it appears on top
