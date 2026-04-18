@@ -814,55 +814,169 @@ function drawFlyingMariachi(ob) {
   ctx.restore();
 }
 
-// Porte/portail de transition entre themes
+// Portail des enfers : double battant plein-hauteur qui s'ouvre a l'approche du joueur
 function drawDoor(ob) {
   const x = ob.x;
-  const y = GROUND_Y - ob.h;
   const w = ob.w;
-  const h = ob.h;
+  const fullH = GROUND_Y;
+  const centerX = x + w / 2;
 
-  // Couleur du portail : couleur du theme suivant
+  // Progression d'ouverture basee sur la proximite du joueur (smoothstep)
+  const dist = Math.abs(centerX - dino.x);
+  const openRange = 200;
+  let raw = 1 - Math.min(dist / openRange, 1);
+  if (ob.triggered) raw = 1;
+  const progress = raw * raw * (3 - 2 * raw);
+
+  // Palette du theme cible
   const nextIsDesert = currentTheme === 'ice';
-  const frameCol = nextIsDesert ? '#B8563A' : '#7EC8E3';
-  const frameDark = nextIsDesert ? '#8A3E27' : '#4A9FC9';
-  const glowCol = nextIsDesert ? 'rgba(255, 200, 130, 0.7)' : 'rgba(200, 235, 255, 0.75)';
-  const sparkleCol = nextIsDesert ? '#FFE082' : '#FFFFFF';
+  const innerCore = '#FFFFFF';
+  const innerGlow = nextIsDesert ? '#FF7A2A' : '#5FC0E8';
+  const frameAccent = nextIsDesert ? '#FFB347' : '#A8E4FF';
+  const emberR = nextIsDesert ? 255 : 180;
+  const emberG = nextIsDesert ? 130 : 220;
+  const emberB = nextIsDesert ? 40 : 255;
 
-  // Lueur interieure (previsualisation du prochain theme)
-  const shimmer = 0.5 + Math.sin(frame * 0.2) * 0.2;
-  ctx.globalAlpha = shimmer;
-  ctx.fillStyle = glowCol;
-  ctx.fillRect(x + 4, y + 8, w - 8, h - 10);
+  // === Halo interne pulsant (visible par l'ouverture) ===
+  const pulse = 0.75 + Math.sin(frame * 0.18) * 0.2;
+  const grad = ctx.createRadialGradient(centerX, fullH / 2, 2, centerX, fullH / 2, w + progress * 40);
+  grad.addColorStop(0, innerCore);
+  grad.addColorStop(0.25, innerGlow);
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.globalAlpha = (0.45 + progress * 0.5) * pulse;
+  ctx.fillStyle = grad;
+  ctx.fillRect(x - 60, 0, w + 120, fullH);
   ctx.globalAlpha = 1;
 
-  // Montants (gauche/droite)
-  ctx.fillStyle = frameCol;
-  ctx.fillRect(x, y + 4, 4, h - 4);
-  ctx.fillRect(x + w - 4, y + 4, 4, h - 4);
+  // === Piliers de pierre sombre ===
+  const pillarW = 10;
+  const stoneGrad = ctx.createLinearGradient(0, 0, 0, fullH);
+  stoneGrad.addColorStop(0, '#3A2520');
+  stoneGrad.addColorStop(0.5, '#251612');
+  stoneGrad.addColorStop(1, '#120906');
+  ctx.fillStyle = stoneGrad;
+  ctx.fillRect(x - pillarW, 0, pillarW, fullH);
+  ctx.fillRect(x + w, 0, pillarW, fullH);
 
-  // Arche en haut
+  // Lignes de pierre (blocs horizontaux)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.lineWidth = 1;
+  for (let yi = 25; yi < fullH; yi += 28) {
+    ctx.beginPath();
+    ctx.moveTo(x - pillarW, yi);
+    ctx.lineTo(x, yi);
+    ctx.moveTo(x + w, yi);
+    ctx.lineTo(x + w + pillarW, yi);
+    ctx.stroke();
+  }
+
+  // Chapiteaux ornemnetes (accent couleur theme cible)
+  ctx.fillStyle = frameAccent;
+  ctx.fillRect(x - pillarW - 2, 0, pillarW + 4, 4);
+  ctx.fillRect(x + w - 2, 0, pillarW + 4, 4);
+  ctx.fillStyle = '#1A0D0A';
+  ctx.fillRect(x - pillarW - 2, 4, pillarW + 4, 3);
+  ctx.fillRect(x + w - 2, 4, pillarW + 4, 3);
+
+  // === Linteau/arche sombre au sommet ===
+  ctx.fillStyle = stoneGrad;
   ctx.beginPath();
-  ctx.arc(x + w / 2, y + 8, w / 2, Math.PI, 0);
-  ctx.lineTo(x + w, y + 8);
-  ctx.lineTo(x + w, y + 2);
-  ctx.arc(x + w / 2, y + 2, w / 2, 0, Math.PI, true);
+  ctx.moveTo(x - pillarW - 2, 0);
+  ctx.lineTo(x + w + pillarW + 2, 0);
+  ctx.lineTo(x + w + pillarW + 2, 8);
+  ctx.quadraticCurveTo(centerX, 22, x - pillarW - 2, 8);
   ctx.closePath();
   ctx.fill();
 
-  // Ombre base
-  ctx.fillStyle = frameDark;
-  ctx.fillRect(x, y + h - 2, w, 2);
+  // Pierre de cle centrale (ornement)
+  ctx.fillStyle = frameAccent;
+  ctx.beginPath();
+  ctx.moveTo(centerX - 5, 4);
+  ctx.lineTo(centerX + 5, 4);
+  ctx.lineTo(centerX + 3, 14);
+  ctx.lineTo(centerX - 3, 14);
+  ctx.closePath();
+  ctx.fill();
 
-  // Etincelles/sparkles animees
-  ctx.fillStyle = sparkleCol;
-  for (let i = 0; i < 3; i++) {
-    const t = frame * 0.05 + i * 2;
-    const sx = x + w / 2 + Math.sin(t) * (w / 2 - 10);
-    const sy = y + 15 + ((frame + i * 20) % 60);
-    if (sy < y + h - 4) {
+  // === Double battant en bois sombre qui s'ouvre ===
+  const panelW = (w - 2) / 2;
+  const leftX = x + 1;
+  const rightEdge = x + w - 1;
+  const scaleX = 1 - progress * 0.94;
+
+  const doorGrad = ctx.createLinearGradient(0, 0, panelW, 0);
+  doorGrad.addColorStop(0, '#4A2518');
+  doorGrad.addColorStop(0.5, '#2B1408');
+  doorGrad.addColorStop(1, '#180905');
+
+  const drawPanel = (isLeft) => {
+    ctx.save();
+    if (isLeft) {
+      ctx.translate(leftX, 0);
+      ctx.scale(scaleX, 1);
+    } else {
+      ctx.translate(rightEdge, 0);
+      ctx.scale(-scaleX, 1);
+    }
+    // Panneau bois
+    ctx.fillStyle = doorGrad;
+    ctx.fillRect(0, 0, panelW, fullH);
+    // Bandes metalliques (horizontales)
+    ctx.fillStyle = '#6B4815';
+    ctx.fillRect(0, 30, panelW, 3);
+    ctx.fillRect(0, fullH - 55, panelW, 3);
+    // Divisions verticales (planches)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 3; i++) {
+      const lx = (panelW / 3) * i;
       ctx.beginPath();
-      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+      ctx.moveTo(lx, 6);
+      ctx.lineTo(lx, fullH - 4);
+      ctx.stroke();
+    }
+    // Clous decoratifs
+    ctx.fillStyle = '#8B6914';
+    [25, 90, 150, 190].forEach(cy => {
+      ctx.beginPath();
+      ctx.arc(4, cy, 1.2, 0, Math.PI * 2);
+      ctx.arc(panelW - 10, cy, 1.2, 0, Math.PI * 2);
       ctx.fill();
+    });
+    // Anneau de poignee (cote central)
+    ctx.fillStyle = '#1A0D08';
+    ctx.beginPath();
+    ctx.arc(panelW - 5, fullH / 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#C9A35C';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(panelW - 5, fullH / 2, 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  drawPanel(true);
+  drawPanel(false);
+
+  // === Braises/etincelles qui s'echappent quand la porte s'ouvre ===
+  if (progress > 0.08) {
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      const seed = i * 13.7;
+      const cycle = 70;
+      const t = ((frame + seed) % cycle) / cycle;
+      const horizOffset = Math.sin(seed + t * 3) * w * 0.3;
+      const sx = centerX + horizOffset;
+      const sy = fullH - 10 - t * (fullH - 30);
+      const size = Math.max(0, (1 - t) * 2.6 * progress);
+      const alpha = (1 - t) * progress * 0.95;
+      if (size > 0.3) {
+        ctx.fillStyle = `rgba(${emberR}, ${Math.floor(emberG + t * 40)}, ${emberB}, ${alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }
@@ -1256,7 +1370,7 @@ function update() {
     const last = obstacles[obstacles.length - 1];
     const gapOK = !last || (W - last.x >= 180);
     if (gapOK) {
-      obstacles.push({ x: W + 20, type: 'door', w: 54, h: 96, bird: false, isDoor: true });
+      obstacles.push({ x: W + 40, type: 'door', w: 70, h: GROUND_Y, bird: false, isDoor: true });
       doorSpawned = true;
       nextObstacleIn = Math.max(nextObstacleIn, 90); // leave room after the door
     }
