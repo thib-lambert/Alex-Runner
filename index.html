@@ -144,15 +144,6 @@
     box-shadow: 0 4px 20px rgba(74, 144, 226, 0.4);
   }
   #birth-screen input::placeholder { color: var(--muted); }
-  #birth-error {
-    margin-top: 10px;
-    font-size: clamp(11px, 2.3vw, 13px);
-    color: var(--accent-2);
-    min-height: 18px;
-    font-weight: bold;
-    text-align: center;
-    padding: 0 8px;
-  }
 
   /* Mobile controls: ON by default (mobile-first) */
   #mobile-controls {
@@ -272,9 +263,8 @@
 <div id="game-wrapper">
   <div id="birth-screen">
     <h2>ALEX RUNNER</h2>
-    <p style="margin-bottom:12px;font-size:14px">Entre ta date de naissance pour jouer</p>
+    <p style="margin-bottom:12px;font-size:14px;max-width:420px">Saisir la date de naissance d'Alexandre ou celle dont se souviennent ses potes</p>
     <input type="text" id="birth-input" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
-    <div id="birth-error"></div>
   </div>
   <canvas id="game" width="800" height="250"></canvas>
   <div id="score">00000</div>
@@ -299,9 +289,7 @@ const DATE_REQUIRED = true;       // false = pas besoin d'entrer la date pour jo
 // Birthday gate
 const birthScreen = document.getElementById('birth-screen');
 const birthInput = document.getElementById('birth-input');
-const birthError = document.getElementById('birth-error');
 const VALID_DATE = '04/04/1996';
-const BIRTH_DATE_ERROR_MSG = "Ce n'est pas la bonne date, c'est un clin d'oeil 😉";
 
 // Auto-format input as JJ/MM/AAAA
 birthInput.addEventListener('input', e => {
@@ -310,11 +298,9 @@ birthInput.addEventListener('input', e => {
   if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
   else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
   birthInput.value = v;
-  birthError.textContent = '';
 
   if (v.length === 10) {
     currentHead = (v === VALID_DATE) ? alexHead : neutralHead;
-    if (v !== VALID_DATE) birthError.textContent = BIRTH_DATE_ERROR_MSG;
     birthScreen.style.display = 'none';
   }
 });
