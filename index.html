@@ -279,6 +279,18 @@
   <audio id="jump-sound" preload="auto">
     <source src="nut_nut.mp3" type="audio/mpeg">
   </audio>
+  <audio id="mariachi-sound-0" preload="auto">
+    <source src="je_m-apelle-moumede.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="mariachi-sound-1" preload="auto">
+    <source src="ouais_mamouaselle.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="mariachi-sound-2" preload="auto">
+    <source src="oulala_moumed.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="deception-sound" preload="auto">
+    <source src="deception_pour_le_joueur_fr.mp3" type="audio/mpeg">
+  </audio>
 </div>
 
 <script>
@@ -326,9 +338,12 @@ const messageEl = document.getElementById('message');
 const W = 800, H = 250;
 const GROUND_Y = 220;
 const GRAVITY = 0.6;
-const JUMP_FORCE = -12;
+const JUMP_FORCE = -7;          // force initiale (saut court)
+const JUMP_BOOST_PER_FRAME = -0.5; // boost supplementaire par frame tenu
+const MAX_JUMP_HOLD = 10;          // frames max de boost (donne equiv. -12 en maintien)
 const DUCK_JUMP_FORCE = -10;
 
+let jumpHeld = false; // true tant que la touche/bouton saut est maintenu
 let gameState = 'idle'; // idle | running | over
 let score = 0;
 let highScore = 0;
@@ -1438,24 +1453,30 @@ function spawnObstacle() {
     if (W - last.x < 120) { nextObstacleIn = 20; return; }
   }
 
+  // Probabilité d'oiseaux augmente avec le score (45% à 250pts, 70% à 500pts)
+  const birdChance = Math.min(0.7, 0.2 + (score / 500) * 0.5);
   const r = Math.random();
   let ob;
+  
   if (r < 0.3) {
     ob = { x: W, type: 'small', w: 18, h: 34, bird: false };
   } else if (r < 0.55) {
     ob = { x: W, type: 'large', w: 28, h: 46, bird: false };
-  } else if (r < 0.8) {
+  } else if (r < 1 - birdChance) {
     ob = { x: W, type: 'double', w: 28, h: 42, bird: false };
   } else {
     // Pingu le pingouin a hauteur variable : force sauter OU glisser selon le cas
     const heights = [50, 70, 90];
     const h = heights[Math.floor(Math.random() * heights.length)];
-    ob = { x: W, y: GROUND_Y - h, type: 'bird', w: 26, h: 36, bird: true };
-    // Son "nut nut" a l'apparition
-    const pinguSound = document.getElementById('jump-sound');
-    if (pinguSound) {
-      pinguSound.currentTime = 0;
-      pinguSound.play().catch(() => {});
+    ob = { x: W, y: GROUND_Y - h, type: 'bird', w: 26, h: 36, bird: true, spawnTheme: currentTheme };
+    // Son a l'apparition selon le theme au moment du spawn
+    if (currentTheme === 'ice') {
+      const pinguSound = document.getElementById('jump-sound');
+      if (pinguSound) { pinguSound.currentTime = 0; pinguSound.play().catch(() => {}); }
+    } else {
+      const idx = Math.floor(Math.random() * 3);
+      const mariachiSound = document.getElementById('mariachi-sound-' + idx);
+      if (mariachiSound) { mariachiSound.currentTime = 0; mariachiSound.play().catch(() => {}); }
     }
   }
   obstacles.push(ob);
@@ -1502,6 +1523,12 @@ function update() {
   // Speed up over time (smooth curve: slow → rapid → intense)
   speed = 6 + Math.pow(score * 0.01, 1.2);
   if (speed > 14) speed = 14;
+
+  // Boost variable si saut maintenu
+  if (dino.jumping && jumpHeld && dino.jumpHoldFrames < MAX_JUMP_HOLD) {
+    dino.vy += JUMP_BOOST_PER_FRAME;
+    dino.jumpHoldFrames++;
+  }
 
   // Dino physics
   if (dino.jumping) {
@@ -1569,6 +1596,8 @@ function update() {
       if (COLLISION_ENABLED) {
         gameState = 'over';
         if (score > highScore) highScore = score;
+        const deceptionSound = document.getElementById('deception-sound');
+        if (deceptionSound) { deceptionSound.currentTime = 0; deceptionSound.play().catch(() => {}); }
         messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(score)).padStart(5, '0') +
           (highScore > 0 ? ' | Record: ' + String(Math.floor(highScore)).padStart(5, '0') : '') +
           '</p><p style="margin-top:8px">Appuie sur Espace pour rejouer</p>';
@@ -1672,7 +1701,7 @@ function draw() {
   obstacles.forEach(ob => {
     if (ob.isDoor) drawDoor(ob);
     else if (ob.bird) {
-      if (currentTheme === 'ice') drawBird(ob);
+      if ((ob.spawnTheme || currentTheme) === 'ice') drawBird(ob);
       else drawFlyingMariachi(ob);
     } else {
       if (currentTheme === 'ice') drawCactus(ob);
@@ -1712,6 +1741,7 @@ function loop() {
 function jump() {
   if (!dino.jumping) {
     dino.jumping = true;
+    dino.jumpHoldFrames = 0;
     dino.vy = dino.ducking ? DUCK_JUMP_FORCE : JUMP_FORCE;
     // Stretch on takeoff
     dino.squash = 1.2;
@@ -1729,6 +1759,7 @@ function startGame() {
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     e.preventDefault();
+    jumpHeld = true;
     if (gameState === 'idle' || gameState === 'over') startGame();
     else if (gameState === 'running') jump();
   }
@@ -1739,6 +1770,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('keyup', e => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') jumpHeld = false;
   if (e.code === 'ArrowDown') dino.ducking = false;
 });
 
@@ -1747,7 +1779,9 @@ let touchStartY = 0;
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   touchStartY = e.touches[0].clientY;
+  jumpHeld = true;
   if (gameState === 'idle' || gameState === 'over') startGame();
+  else if (gameState === 'running') jump();
 });
 
 canvas.addEventListener('touchmove', e => {
@@ -1760,10 +1794,10 @@ canvas.addEventListener('touchmove', e => {
 
 canvas.addEventListener('touchend', e => {
   e.preventDefault();
+  jumpHeld = false;
   const dy = e.changedTouches[0].clientY - touchStartY;
   if (gameState === 'running') {
     dino.ducking = false;
-    if (dy <= 30) jump();
   }
 });
 
@@ -1778,8 +1812,22 @@ jumpBtn.addEventListener('click', () => {
 
 jumpBtn.addEventListener('touchstart', (e) => {
   e.preventDefault();
+  jumpHeld = true;
   if (gameState === 'idle' || gameState === 'over') startGame();
   else if (gameState === 'running') jump();
+});
+
+jumpBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  jumpHeld = false;
+});
+
+jumpBtn.addEventListener('mousedown', () => {
+  jumpHeld = true;
+});
+
+jumpBtn.addEventListener('mouseup', () => {
+  jumpHeld = false;
 });
 
 duckBtn.addEventListener('touchstart', (e) => {
