@@ -479,6 +479,27 @@ for (let i = 0; i < 40; i++) {
   });
 }
 
+// === SOUND MANAGEMENT ===
+function stopAllSounds() {
+  const sounds = ['jump-sound', 'mariachi-sound-0', 'mariachi-sound-1', 'mariachi-sound-2', 'deception-sound'];
+  for (const id of sounds) {
+    const sound = document.getElementById(id);
+    if (sound) {
+      sound.pause();
+      sound.currentTime = 0;
+    }
+  }
+}
+
+function playGameOverSound() {
+  stopAllSounds();
+  const deceptionSound = document.getElementById('deception-sound');
+  if (deceptionSound) { 
+    deceptionSound.currentTime = 0;
+    deceptionSound.play().catch(() => {}); 
+  }
+}
+
 function reset() {
   dino.y = GROUND_Y;
   dino.vy = 0;
@@ -1470,13 +1491,15 @@ function spawnObstacle() {
     const h = heights[Math.floor(Math.random() * heights.length)];
     ob = { x: W, y: GROUND_Y - h, type: 'bird', w: 26, h: 36, bird: true, spawnTheme: currentTheme };
     // Son a l'apparition selon le theme au moment du spawn
-    if (currentTheme === 'ice') {
-      const pinguSound = document.getElementById('jump-sound');
-      if (pinguSound) { pinguSound.currentTime = 0; pinguSound.play().catch(() => {}); }
-    } else {
-      const idx = Math.floor(Math.random() * 3);
-      const mariachiSound = document.getElementById('mariachi-sound-' + idx);
-      if (mariachiSound) { mariachiSound.currentTime = 0; mariachiSound.play().catch(() => {}); }
+    if (gameState === 'running') {
+      if (currentTheme === 'ice') {
+        const pinguSound = document.getElementById('jump-sound');
+        if (pinguSound) { pinguSound.currentTime = 0; pinguSound.play().catch(() => {}); }
+      } else {
+        const idx = Math.floor(Math.random() * 3);
+        const mariachiSound = document.getElementById('mariachi-sound-' + idx);
+        if (mariachiSound) { mariachiSound.currentTime = 0; mariachiSound.play().catch(() => {}); }
+      }
     }
   }
   obstacles.push(ob);
@@ -1596,8 +1619,7 @@ function update() {
       if (COLLISION_ENABLED) {
         gameState = 'over';
         if (score > highScore) highScore = score;
-        const deceptionSound = document.getElementById('deception-sound');
-        if (deceptionSound) { deceptionSound.currentTime = 0; deceptionSound.play().catch(() => {}); }
+        playGameOverSound();
         messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(score)).padStart(5, '0') +
           (highScore > 0 ? ' | Record: ' + String(Math.floor(highScore)).padStart(5, '0') : '') +
           '</p><p style="margin-top:8px">Appuie sur Espace pour rejouer</p>';
