@@ -80,6 +80,19 @@
     pointer-events: none;
   }
 
+  /* Best score display */
+  #best-score {
+    position: absolute;
+    top: clamp(8px, 2.2vw, 22px);
+    left: clamp(12px, 3vw, 28px);
+    font-size: clamp(10px, 1.8vw, 14px);
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-weight: bold;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+  }
+
   #message {
     position: absolute;
     top: 50%;
@@ -220,6 +233,171 @@
     100%      { transform: rotate(0deg); }
   }
 
+  /* Pseudo screen */
+  #pseudo-screen {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    color: var(--text);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  #pseudo-screen.active {
+    display: flex;
+  }
+  #pseudo-screen h2 {
+    font-size: clamp(18px, 4vw, 26px);
+    margin-bottom: 14px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-align: center;
+  }
+  #pseudo-screen p {
+    text-align: center;
+    margin-bottom: 12px;
+    font-size: clamp(10px, 1.9vw, 14px);
+    color: var(--muted);
+  }
+  #pseudo-screen input {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(16px, 3.5vw, 20px);
+    text-align: center;
+    padding: 10px 16px;
+    border: 2px solid var(--accent);
+    background: #fff;
+    color: var(--text);
+    letter-spacing: 2px;
+    width: min(85%, 240px);
+    outline: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+    transition: box-shadow 0.2s;
+    margin-bottom: 12px;
+  }
+  #pseudo-screen input:focus {
+    box-shadow: 0 4px 20px rgba(74, 144, 226, 0.4);
+  }
+  #pseudo-screen input::placeholder { color: var(--muted); }
+  
+  /* Leaderboard modal - affichage à droite */
+  #leaderboard-screen {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    display: none;
+    justify-content: flex-end;
+    z-index: 50;
+    padding: 0;
+    pointer-events: none;
+  }
+  #leaderboard-screen.active {
+    display: flex;
+    pointer-events: auto;
+  }
+  #leaderboard-container {
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+    border-radius: 18px 0 0 18px;
+    padding: 20px;
+    width: min(400px, 100%);
+    height: 100%;
+    max-height: 100%;
+    overflow-y: auto;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+  }
+  #leaderboard-container h2 {
+    font-size: clamp(16px, 3vw, 20px);
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-align: center;
+    margin-bottom: 14px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 10px;
+    flex-shrink: 0;
+  }
+  #leaderboard-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    margin: 5px 0;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+    font-size: clamp(11px, 1.8vw, 13px);
+    color: var(--text);
+    border-left: 4px solid var(--accent);
+  }
+  .leaderboard-item.top-1 { border-left-color: #FFD700; background: rgba(255, 215, 0, 0.1); }
+  .leaderboard-item.top-2 { border-left-color: #C0C0C0; background: rgba(192, 192, 192, 0.1); }
+  .leaderboard-item.top-3 { border-left-color: #CD7F32; background: rgba(205, 127, 50, 0.1); }
+  .leaderboard-rank {
+    font-weight: bold;
+    color: var(--accent);
+    min-width: 24px;
+    font-size: 14px;
+  }
+  .leaderboard-name {
+    flex: 1;
+    margin: 0 8px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .leaderboard-score {
+    font-weight: bold;
+    color: var(--accent-2);
+    font-size: 12px;
+  }
+  #leaderboard-close {
+    margin-top: 10px;
+    width: 100%;
+    padding: 8px;
+    background: linear-gradient(135deg, var(--accent), #7FB8F0);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  /* Leaderboard responsive */
+  @media (max-width: 1200px) {
+    #leaderboard-container {
+      width: min(350px, 90vw);
+    }
+  }
+  @media (max-width: 600px) {
+    #leaderboard-container {
+      width: 100%;
+      border-radius: 0;
+    }
+    .leaderboard-item {
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    .leaderboard-name {
+      margin: 0 6px;
+    }
+  }
+
   /* Force landscape on mobile portrait: show overlay, hide game */
   @media (orientation: portrait) and (max-width: 900px) {
     #rotate-prompt { display: flex; }
@@ -266,11 +444,26 @@
     <p style="margin-bottom:12px;font-size:14px;max-width:420px">Saisir la date de naissance d'Alexandre ou celle dont se souviennent ses potes</p>
     <input type="text" id="birth-input" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
   </div>
+  <div id="pseudo-screen">
+    <h2>ALEX RUNNER</h2>
+    <p style="font-size:14px;max-width:420px">Entre ton pseudo pour le leaderboard</p>
+    <input type="text" id="pseudo-input" placeholder="TON PSEUDO" maxlength="20" autocomplete="off">
+    <p style="font-size:12px;color:var(--muted)">Appuie sur Entree pour continuer</p>
+  </div>
+  <div id="leaderboard-screen">
+    <div id="leaderboard-container">
+      <h2>🏆 LEADERBOARD 🏆</h2>
+      <div id="leaderboard-list"></div>
+      <button id="leaderboard-close">FERMER</button>
+    </div>
+  </div>
   <canvas id="game" width="800" height="250"></canvas>
   <div id="score">00000</div>
+  <div id="best-score">BEST: 00000</div>
   <div id="message">
     <h2>ALEX RUNNER</h2>
     <p>Appuie sur Espace ou touche l'ecran pour jouer</p>
+    <p style="margin-top:12px;font-size:12px"><button onclick="showLeaderboard()" style="padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold">🏆 LEADERBOARD 🏆</button></p>
   </div>
   <div id="mobile-controls">
     <button class="mobile-btn" id="jump-btn">SAUTER</button>
@@ -293,7 +486,24 @@
   </audio>
 </div>
 
-<script>
+<script type="module">
+// === FIREBASE CONFIGURATION ===
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getDatabase, ref, push, query, orderByChild, limitToFirst, onValue } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCmHwGxGv27v4AKx342qBlKAqTpCY8LtSI",
+  authDomain: "alex-runner-f4195.firebaseapp.com",
+  databaseURL: "https://alex-runner-f4195-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "alex-runner-f4195",
+  storageBucket: "alex-runner-f4195.firebasestorage.app",
+  messagingSenderId: "581146376680",
+  appId: "1:581146376680:web:0801c50a3da90451ab0c5d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 // === CONFIGURATION ===
 const COLLISION_ENABLED = true;   // false = le joueur ne meurt pas en touchant les obstacles
 const DATE_REQUIRED = true;       // false = pas besoin d'entrer la date pour jouer
@@ -301,7 +511,16 @@ const DATE_REQUIRED = true;       // false = pas besoin d'entrer la date pour jo
 // Birthday gate
 const birthScreen = document.getElementById('birth-screen');
 const birthInput = document.getElementById('birth-input');
+const pseudoScreen = document.getElementById('pseudo-screen');
+const pseudoInput = document.getElementById('pseudo-input');
+const leaderboardScreen = document.getElementById('leaderboard-screen');
+const leaderboardList = document.getElementById('leaderboard-list');
+const leaderboardClose = document.getElementById('leaderboard-close');
 const VALID_DATE = '04/04/1996';
+
+// Récupérer ou initialiser le pseudo en localStorage
+let currentPseudo = localStorage.getItem('alexRunnerPseudo') || '';
+
 
 // Auto-format input as JJ/MM/AAAA
 birthInput.addEventListener('input', e => {
@@ -313,19 +532,48 @@ birthInput.addEventListener('input', e => {
 
   if (v.length === 10) {
     currentHead = (v === VALID_DATE) ? alexHead : neutralHead;
-    birthScreen.style.display = 'none';
+    showPseudoScreen();
   }
 });
 
 birthInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && birthInput.value.length === 10) {
     currentHead = (birthInput.value === VALID_DATE) ? alexHead : neutralHead;
-    birthScreen.style.display = 'none';
+    showPseudoScreen();
   }
 });
 
+// Pseudo input handler
+pseudoInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && pseudoInput.value.trim().length > 0) {
+    currentPseudo = pseudoInput.value.trim();
+    localStorage.setItem('alexRunnerPseudo', currentPseudo);
+    pseudoScreen.classList.remove('active');
+    messageEl.style.display = 'block';
+    
+    // Récupérer le meilleur score de ce joueur
+    fetchPlayerBestScore(currentPseudo);
+    
+    canvas.focus();
+  }
+});
+
+function showPseudoScreen() {
+  birthScreen.style.display = 'none';
+  pseudoScreen.classList.add('active');
+  if (currentPseudo) {
+    pseudoInput.value = currentPseudo;
+  }
+  pseudoInput.focus();
+}
+
 if (!DATE_REQUIRED) {
   birthScreen.style.display = 'none';
+  if (!currentPseudo) {
+    showPseudoScreen();
+  } else {
+    messageEl.style.display = 'block';
+  }
 } else {
   birthInput.focus();
 }
@@ -347,6 +595,10 @@ let jumpHeld = false; // true tant que la touche/bouton saut est maintenu
 let gameState = 'idle'; // idle | running | over
 let score = 0;
 let highScore = 0;
+let playerBestScore = 0; // Meilleur score du joueur (depuis Firebase)
+let beatRecord = false; // true si on bat le record pendant cette partie
+let recordLineX = -1000; // Position X de la ligne verticale du record
+let recordLinePassed = false; // true si on a dépassé la ligne
 let speed = 6;
 let frame = 0;
 let groundOffset = 0;
@@ -500,6 +752,26 @@ function playGameOverSound() {
   }
 }
 
+// === CALCULATE DISTANCE FROM SCORE ===
+// Simule la progression de la vitesse pour calculer la distance exacte
+function scoreToDistance(scoreValue) {
+  if (scoreValue <= 0) return 0;
+  
+  let distance = 0;
+  let currentSpeed = 6;
+  const framesNeeded = Math.ceil(scoreValue / 0.1); // score augmente de 0.1 par frame
+  
+  for (let frame = 0; frame < framesNeeded; frame++) {
+    const currentScore = frame * 0.1;
+    // Formule de vitesse (même que dans update())
+    const targetSpeed = 6 + (Math.min(Math.floor(currentScore), 800) / 800) * 8;
+    currentSpeed += (targetSpeed - currentSpeed) * 0.05;
+    distance += currentSpeed;
+  }
+  
+  return distance;
+}
+
 function reset() {
   dino.y = GROUND_Y;
   dino.vy = 0;
@@ -518,11 +790,157 @@ function reset() {
   score = 0;
   speed = 6;
   frame = 0;
+  beatRecord = false;
+  recordLinePassed = false;
+  
+  // Calculer la position X de la ligne du record (basée sur la distance réelle)
+  if (playerBestScore > 0) {
+    recordLineX = scoreToDistance(playerBestScore);
+  } else {
+    recordLineX = -1000; // Hors écran si pas de score
+  }
+  
   currentTheme = 'ice';
   nextThemeChange = 150;
   doorSpawned = false;
   themeFlash = 0;
 }
+
+// === FIREBASE FUNCTIONS ===
+async function submitScore(playerName, finalScore) {
+  try {
+    const scoresRef = ref(db, 'scores');
+    const newScore = {
+      player: playerName,
+      score: Math.floor(finalScore),
+      date: new Date().toISOString(),
+      timestamp: Date.now()
+    };
+    await push(scoresRef, newScore);
+    console.log('Score submitted successfully');
+  } catch (error) {
+    console.error('Error submitting score:', error);
+  }
+}
+
+async function loadLeaderboard(currentScore = 0) {
+  try {
+    const scoresRef = ref(db, 'scores');
+    onValue(scoresRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        leaderboardList.innerHTML = '<p style="text-align:center;color:var(--muted)">Aucun score pour l\'instant</p>';
+        return;
+      }
+      
+      const scoresArray = Object.values(data).map(score => ({
+        ...score,
+        score: typeof score.score === 'number' ? score.score : parseInt(score.score)
+      }));
+      
+      // Dédupliquer par pseudo : garder seulement le meilleur score
+      const bestScoresByPlayer = {};
+      scoresArray.forEach(item => {
+        const playerName = item.player.toLowerCase().trim();
+        if (!bestScoresByPlayer[playerName] || item.score > bestScoresByPlayer[playerName].score) {
+          bestScoresByPlayer[playerName] = item;
+        }
+      });
+      
+      // Convertir en array et trier par score décroissant
+      const uniqueScores = Object.values(bestScoresByPlayer);
+      uniqueScores.sort((a, b) => b.score - a.score);
+      
+      // Prendre les 10 premiers
+      const top10 = uniqueScores.slice(0, 10);
+      
+      // Générer le HTML pour le top 10
+      let html = '';
+      top10.forEach((item, idx) => {
+        const rank = idx + 1;
+        let medal = '•';
+        if (rank === 1) medal = '🥇';
+        else if (rank === 2) medal = '🥈';
+        else if (rank === 3) medal = '🥉';
+        
+        const topClass = rank <= 3 ? `top-${rank}` : '';
+        html += `
+          <div class="leaderboard-item ${topClass}">
+            <span class="leaderboard-rank">${medal}</span>
+            <span class="leaderboard-name">${item.player}</span>
+            <span class="leaderboard-score">${item.score.toLocaleString()}</span>
+          </div>
+        `;
+      });
+      
+      // Ajouter une section "Votre dernier run" si score > 0
+      if (currentScore > 0 && currentPseudo) {
+        html += `
+          <div style="margin-top:16px;padding-top:12px;border-top:2px solid var(--muted);text-align:center;font-size:11px;color:var(--muted)">
+            <p style="margin:0 0 6px 0;font-weight:bold;color:var(--accent)">📍 Votre dernier run</p>
+            <div class="leaderboard-item" style="background:rgba(76, 231, 107, 0.1);border-left-color:#4CE76B;margin:0">
+              <span class="leaderboard-rank">•</span>
+              <span class="leaderboard-name">${currentPseudo}</span>
+              <span class="leaderboard-score">${Math.floor(currentScore).toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      }
+      
+      leaderboardList.innerHTML = html;
+    });
+  } catch (error) {
+    console.error('Error loading leaderboard:', error);
+    leaderboardList.innerHTML = '<p style="text-align:center;color:red">Erreur chargement</p>';
+  }
+}
+
+function showLeaderboard(currentScore = 0) {
+  leaderboardScreen.classList.add('active');
+  loadLeaderboard(currentScore);
+}
+
+function hideLeaderboard() {
+  leaderboardScreen.classList.remove('active');
+}
+
+leaderboardClose.addEventListener('click', hideLeaderboard);
+
+// === FETCH PLAYER BEST SCORE ===
+async function fetchPlayerBestScore(playerName) {
+  try {
+    const scoresRef = ref(db, 'scores');
+    onValue(scoresRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        playerBestScore = 0;
+        return;
+      }
+      
+      const scoresArray = Object.values(data).map(score => ({
+        ...score,
+        score: typeof score.score === 'number' ? score.score : parseInt(score.score)
+      }));
+      
+      // Trouver tous les scores de ce joueur
+      const playerName_lower = playerName.toLowerCase().trim();
+      const playerScores = scoresArray.filter(item => 
+        item.player.toLowerCase().trim() === playerName_lower
+      );
+      
+      // Récupérer le meilleur
+      if (playerScores.length > 0) {
+        playerBestScore = Math.max(...playerScores.map(s => s.score));
+      } else {
+        playerBestScore = 0;
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching player best score:', error);
+    playerBestScore = 0;
+  }
+}
+
 
 // Drawing helpers
 
@@ -1493,9 +1911,11 @@ function spawnObstacle() {
     // Son a l'apparition selon le theme au moment du spawn
     if (gameState === 'running') {
       if (currentTheme === 'ice') {
+        stopAllSounds();
         const pinguSound = document.getElementById('jump-sound');
         if (pinguSound) { pinguSound.currentTime = 0; pinguSound.play().catch(() => {}); }
       } else {
+        stopAllSounds();
         const idx = Math.floor(Math.random() * 3);
         const mariachiSound = document.getElementById('mariachi-sound-' + idx);
         if (mariachiSound) { mariachiSound.currentTime = 0; mariachiSound.play().catch(() => {}); }
@@ -1620,10 +2040,22 @@ function update() {
         gameState = 'over';
         if (score > highScore) highScore = score;
         playGameOverSound();
+        
+        // Soumettre le score à Firebase
+        if (currentPseudo) {
+          submitScore(currentPseudo, score);
+        }
+        
         messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(score)).padStart(5, '0') +
           (highScore > 0 ? ' | Record: ' + String(Math.floor(highScore)).padStart(5, '0') : '') +
           '</p><p style="margin-top:8px">Appuie sur Espace pour rejouer</p>';
         messageEl.style.display = 'block';
+        
+        // Afficher le leaderboard après 500ms avec le score actuel
+        setTimeout(() => {
+          showLeaderboard(score);
+        }, 500);
+        
         return;
       }
     }
@@ -1632,6 +2064,20 @@ function update() {
   // Score
   score += 0.1;
   scoreEl.textContent = String(Math.floor(score)).padStart(5, '0');
+  
+  // Mettre à jour best-score display et déterminer si on beat le record (basé sur distance)
+  const bestScoreEl = document.getElementById('best-score');
+  if (playerBestScore > 0) {
+    bestScoreEl.textContent = 'BEST: ' + String(Math.floor(playerBestScore)).padStart(5, '0');
+    
+    // Détecter le franchissement de la ligne (basé sur la distance, pas le score)
+    if (groundOffset > recordLineX && !recordLinePassed) {
+      recordLinePassed = true;
+      beatRecord = true;
+    }
+  } else {
+    bestScoreEl.textContent = 'BEST: -----';
+  }
 }
 
 function draw() {
@@ -1731,6 +2177,35 @@ function draw() {
     }
   });
 
+  // Afficher la ligne verticale du record (avant d'être franchie)
+  if (playerBestScore > 0 && !recordLinePassed) {
+    const recordLineScreenX = recordLineX - groundOffset;
+    
+    // Afficher seulement si la ligne est visible à l'écran
+    if (recordLineScreenX > 0 && recordLineScreenX < W) {
+      ctx.strokeStyle = 'rgba(255, 100, 100, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 6]); // Pointillés
+      ctx.beginPath();
+      ctx.moveTo(recordLineScreenX, 0);
+      ctx.lineTo(recordLineScreenX, H);
+      ctx.stroke();
+      ctx.setLineDash([]); // Réinitialiser le dash
+    }
+  }
+  
+  // Animation pulsante quand on vient de franchir la ligne
+  if (beatRecord && recordLinePassed) {
+    const pulseAlpha = 0.3 + Math.sin(frame * 0.15) * 0.5;
+    ctx.fillStyle = `rgba(255, 0, 0, ${pulseAlpha * 0.2})`;
+    ctx.fillRect(0, 0, W, H); // Fond rouge pulsant
+    
+    // Réinitialiser l'alpha après quelques frames
+    if (frame > 60) {
+      beatRecord = false;
+    }
+  }
+
   drawDino();
 
   // Theme transition flash
@@ -1775,6 +2250,7 @@ function startGame() {
   reset();
   gameState = 'running';
   messageEl.style.display = 'none';
+  hideLeaderboard();
 }
 
 // Input
