@@ -104,6 +104,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    display: none;
     text-align: center;
     color: var(--text);
     pointer-events: none;
@@ -118,6 +119,36 @@
   #message p {
     font-size: clamp(10px, 1.9vw, 14px);
     color: var(--muted);
+  }
+  .message-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    pointer-events: auto;
+  }
+  .message-action-btn {
+    padding: 7px 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    box-shadow: 0 6px 14px rgba(74, 144, 226, 0.18);
+  }
+  .message-action-btn.secondary {
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--accent);
+    border: 1px solid rgba(74, 144, 226, 0.25);
+    box-shadow: 0 6px 14px rgba(26, 58, 92, 0.08);
+  }
+  .message-action-btn.hidden {
+    display: none;
   }
 
   /* Birthday gate: responsive */
@@ -384,6 +415,66 @@
     letter-spacing: 1px;
   }
 
+  /* Install prompt */
+  #install-prompt {
+    position: fixed;
+    left: 50%;
+    bottom:
+      max(env(safe-area-inset-bottom), 12px);
+    transform: translateX(-50%);
+    width: min(420px, calc(100vw - 16px));
+    display: none;
+    z-index: 120;
+  }
+  #install-prompt.active {
+    display: block;
+  }
+  #install-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 2px solid rgba(74, 144, 226, 0.22);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    box-shadow: 0 18px 38px rgba(26, 58, 92, 0.2);
+    backdrop-filter: blur(10px);
+  }
+  #install-card h3 {
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-size: clamp(15px, 3vw, 18px);
+    letter-spacing: 1px;
+  }
+  #install-card p {
+    color: var(--text);
+    font-size: clamp(12px, 2.4vw, 14px);
+    line-height: 1.45;
+  }
+  #install-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .install-btn {
+    flex: 1;
+    padding: 11px 14px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, var(--accent), #7FB8F0);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(74, 144, 226, 0.25);
+  }
+  .install-btn.secondary {
+    background: rgba(139, 168, 196, 0.18);
+    color: var(--text);
+    box-shadow: none;
+  }
+  #install-prompt.ios #install-dismiss {
+    display: none;
+  }
+
   /* Leaderboard responsive */
   @media (max-width: 1200px) {
     #leaderboard-container {
@@ -444,6 +535,16 @@
   <h2>Tourne ton appareil</h2>
   <p>Ce jeu se joue en mode paysage</p>
 </div>
+<div id="install-prompt" aria-hidden="true">
+  <div id="install-card" role="dialog" aria-modal="false" aria-labelledby="install-title">
+    <h3 id="install-title">Installer Alex Runner</h3>
+    <p id="install-text">Ajoute le jeu sur ton appareil pour jouer plus vite, en plein ecran et hors ligne.</p>
+    <div id="install-actions">
+      <button id="install-dismiss" class="install-btn secondary" type="button">Fermer</button>
+      <button id="install-confirm" class="install-btn" type="button">Installer</button>
+    </div>
+  </div>
+</div>
 <div id="game-wrapper">
   <div id="birth-screen">
     <h2>ALEX RUNNER</h2>
@@ -469,7 +570,10 @@
   <div id="message">
     <h2>ALEX RUNNER</h2>
     <p>Appuie sur Espace ou touche l'ecran pour jouer</p>
-    <p style="margin-top:12px;font-size:12px"><button id="leaderboard-open" style="padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;pointer-events:auto">🏆 LEADERBOARD 🏆</button></p>
+    <div class="message-actions">
+      <button id="leaderboard-open" class="message-action-btn" type="button">🏆 LEADERBOARD 🏆</button>
+      <button id="install-home" class="message-action-btn secondary hidden" type="button">INSTALLER</button>
+    </div>
   </div>
   <div id="mobile-controls">
     <button class="mobile-btn" id="jump-btn">SAUTER</button>
@@ -522,7 +626,136 @@ const pseudoInput = document.getElementById('pseudo-input');
 const leaderboardScreen = document.getElementById('leaderboard-screen');
 const leaderboardList = document.getElementById('leaderboard-list');
 const leaderboardClose = document.getElementById('leaderboard-close');
+const installPromptEl = document.getElementById('install-prompt');
+const installPromptTextEl = document.getElementById('install-text');
+const installDismissEl = document.getElementById('install-dismiss');
+const installConfirmEl = document.getElementById('install-confirm');
+const installHomeEl = document.getElementById('install-home');
 const VALID_DATE = '04/04/1996';
+const INSTALL_PROMPT_STORAGE_KEY = 'alexRunnerInstallPromptState';
+const IOS_SAFARI_RE = /iphone|ipad|ipod/i;
+const IOS_BROWSER_EXCLUDE_RE = /crios|fxios|edgios/i;
+
+let deferredInstallPrompt = null;
+let installPromptMode = 'web';
+let installAutoPromptShown = false;
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIosSafari() {
+  return IOS_SAFARI_RE.test(navigator.userAgent) && /safari/i.test(navigator.userAgent) && !IOS_BROWSER_EXCLUDE_RE.test(navigator.userAgent);
+}
+
+function hasHandledInstallPrompt() {
+  return Boolean(localStorage.getItem(INSTALL_PROMPT_STORAGE_KEY));
+}
+
+function markInstallPromptHandled(state) {
+  localStorage.setItem(INSTALL_PROMPT_STORAGE_KEY, state);
+}
+
+function canOfferInstallPrompt() {
+  return location.protocol !== 'file:' && !hasHandledInstallPrompt() && !isStandaloneMode();
+}
+
+function isOnboardingActive() {
+  return getComputedStyle(birthScreen).display !== 'none' || pseudoScreen.classList.contains('active');
+}
+
+function canShowInstallPrompt(options = {}) {
+  const { force = false } = options;
+  if (location.protocol === 'file:' || isStandaloneMode()) return false;
+  if (!force && isOnboardingActive()) return false;
+  return force ? true : canOfferInstallPrompt();
+}
+
+function shouldShowInstallHomeButton() {
+  if (location.protocol === 'file:' || isStandaloneMode()) return false;
+  if (isOnboardingActive()) return false;
+  return isIosSafari() || Boolean(deferredInstallPrompt);
+}
+
+function refreshInstallHomeButton() {
+  installHomeEl.classList.toggle('hidden', !shouldShowInstallHomeButton());
+}
+
+function maybeShowInstallPrompt() {
+  if (installAutoPromptShown || isOnboardingActive() || !canOfferInstallPrompt()) return;
+  if (deferredInstallPrompt) {
+    installAutoPromptShown = true;
+    window.setTimeout(() => {
+      if (deferredInstallPrompt && canOfferInstallPrompt() && !isOnboardingActive()) {
+        showInstallPrompt('web');
+      }
+    }, 600);
+    return;
+  }
+  if (isIosSafari()) {
+    installAutoPromptShown = true;
+    window.setTimeout(() => {
+      if (canOfferInstallPrompt() && !isOnboardingActive()) {
+        showInstallPrompt('ios');
+      }
+    }, 1200);
+  }
+}
+
+function revealHomeScreen() {
+  messageEl.style.display = 'block';
+  refreshInstallHomeButton();
+  maybeShowInstallPrompt();
+}
+
+function hideInstallPrompt(options = {}) {
+  const { remember = false, state = 'dismissed' } = options;
+  installPromptEl.classList.remove('active', 'ios');
+  installPromptEl.setAttribute('aria-hidden', 'true');
+  if (remember) {
+    markInstallPromptHandled(state);
+  }
+}
+
+function showInstallPrompt(mode, options = {}) {
+  if (!canShowInstallPrompt(options) || installPromptEl.classList.contains('active')) return;
+
+  installPromptMode = mode;
+  installPromptEl.classList.toggle('ios', mode === 'ios');
+  installConfirmEl.textContent = mode === 'ios' ? 'Compris' : 'Installer';
+  installPromptTextEl.textContent = mode === 'ios'
+    ? "Sur iPhone/iPad, touche Partager puis 'Sur l'ecran d'accueil' pour installer le jeu."
+    : 'Ajoute Alex Runner sur ton appareil pour jouer en plein ecran et hors ligne.';
+  installPromptEl.classList.add('active');
+  installPromptEl.setAttribute('aria-hidden', 'false');
+}
+
+async function confirmInstallPrompt() {
+  if (installPromptMode === 'ios' || !deferredInstallPrompt) {
+    hideInstallPrompt({ remember: true, state: installPromptMode === 'ios' ? 'ios' : 'unavailable' });
+    return;
+  }
+
+  const promptEvent = deferredInstallPrompt;
+  deferredInstallPrompt = null;
+  hideInstallPrompt();
+  await promptEvent.prompt();
+  const choice = await promptEvent.userChoice;
+  hideInstallPrompt({ remember: true, state: choice.outcome === 'accepted' ? 'accepted' : 'dismissed' });
+  refreshInstallHomeButton();
+}
+
+function handleHomeInstallClick() {
+  if (isIosSafari()) {
+    showInstallPrompt('ios', { force: true });
+    return;
+  }
+  if (!deferredInstallPrompt) return;
+  installPromptMode = 'web';
+  confirmInstallPrompt().catch(error => {
+    console.error('Manual install failed:', error);
+  });
+}
 
 // Récupérer ou initialiser le pseudo en localStorage
 let currentPseudo = localStorage.getItem('alexRunnerPseudo') || '';
@@ -555,7 +788,7 @@ pseudoInput.addEventListener('keydown', e => {
     currentPseudo = pseudoInput.value.trim();
     localStorage.setItem('alexRunnerPseudo', currentPseudo);
     pseudoScreen.classList.remove('active');
-    messageEl.style.display = 'block';
+    revealHomeScreen();
     
     // Récupérer le meilleur score de ce joueur
     fetchPlayerBestScore(currentPseudo);
@@ -578,7 +811,7 @@ if (!DATE_REQUIRED) {
   if (!currentPseudo) {
     showPseudoScreen();
   } else {
-    messageEl.style.display = 'block';
+    revealHomeScreen();
   }
 } else {
   birthInput.focus();
@@ -3008,6 +3241,35 @@ duckBtn.addEventListener('mouseup', () => {
   dino.ducking = false;
 });
 
+installDismissEl.addEventListener('click', () => {
+  hideInstallPrompt({ remember: true, state: 'dismissed' });
+  refreshInstallHomeButton();
+});
+
+installConfirmEl.addEventListener('click', () => {
+  confirmInstallPrompt().catch(error => {
+    console.error('Install prompt failed:', error);
+    hideInstallPrompt({ remember: true, state: 'failed' });
+    refreshInstallHomeButton();
+  });
+});
+
+installHomeEl.addEventListener('click', handleHomeInstallClick);
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  refreshInstallHomeButton();
+  maybeShowInstallPrompt();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  hideInstallPrompt();
+  markInstallPromptHandled('accepted');
+  refreshInstallHomeButton();
+});
+
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(error => {
@@ -3015,6 +3277,11 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     });
   });
 }
+
+window.addEventListener('load', () => {
+  refreshInstallHomeButton();
+  maybeShowInstallPrompt();
+});
 
 requestAnimationFrame(loop);
 </script>
