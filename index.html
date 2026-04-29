@@ -583,6 +583,24 @@ const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const messageEl = document.getElementById('message');
 
+// Polyfill roundRect for Safari < 15.4
+if (typeof ctx.roundRect !== 'function') {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+    const r = typeof radii === 'number' ? radii : (Array.isArray(radii) && radii.length ? radii[0] : 0);
+    const rr = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    this.moveTo(x + rr, y);
+    this.lineTo(x + w - rr, y);
+    this.arcTo(x + w, y, x + w, y + rr, rr);
+    this.lineTo(x + w, y + h - rr);
+    this.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+    this.lineTo(x + rr, y + h);
+    this.arcTo(x, y + h, x, y + h - rr, rr);
+    this.lineTo(x, y + rr);
+    this.arcTo(x, y, x + rr, y, rr);
+    this.closePath();
+  };
+}
+
 const W = 800, H = 250;
 const GROUND_Y = 220;
 const GRAVITY = 0.6;
@@ -593,6 +611,7 @@ const DUCK_JUMP_FORCE = -10;
 
 let jumpHeld = false; // true tant que la touche/bouton saut est maintenu
 let gameState = 'idle'; // idle | running | over
+let leaderboardTimeoutId = null;
 let score = 0;
 let highScore = 0;
 let playerBestScore = 0; // Meilleur score du joueur (depuis Firebase)
@@ -2052,7 +2071,8 @@ function update() {
         messageEl.style.display = 'block';
         
         // Afficher le leaderboard après 500ms avec le score actuel
-        setTimeout(() => {
+        leaderboardTimeoutId = setTimeout(() => {
+          leaderboardTimeoutId = null;
           showLeaderboard(score);
         }, 500);
         
@@ -2228,9 +2248,22 @@ function animateSnow() {
   });
 }
 
-function loop() {
-  update();
-  animateSnow();
+// Fixed-timestep loop: always runs logic at 60 ticks/sec regardless of display Hz.
+// Fixes: game too fast on 120Hz Chrome, too slow on Safari.
+const _STEP = 1000 / 60;
+let _lastTime = 0;
+let _accumulator = 0;
+
+function loop(timestamp) {
+  if (_lastTime === 0) _lastTime = timestamp;
+  const dt = Math.min(timestamp - _lastTime, 50); // cap at 50ms to prevent spiral of death
+  _lastTime = timestamp;
+  _accumulator += dt;
+  while (_accumulator >= _STEP) {
+    update();
+    animateSnow();
+    _accumulator -= _STEP;
+  }
   draw();
   requestAnimationFrame(loop);
 }
@@ -2247,6 +2280,10 @@ function jump() {
 }
 
 function startGame() {
+  if (leaderboardTimeoutId !== null) {
+    clearTimeout(leaderboardTimeoutId);
+    leaderboardTimeoutId = null;
+  }
   reset();
   gameState = 'running';
   messageEl.style.display = 'none';
@@ -2346,7 +2383,7 @@ duckBtn.addEventListener('mouseup', () => {
   dino.ducking = false;
 });
 
-loop();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
