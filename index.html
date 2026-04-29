@@ -622,11 +622,36 @@ let speed = 6;
 let frame = 0;
 let groundOffset = 0;
 
-// Theme system: 'ice' | 'desert' — swaps every 150 points via a door portal
-let currentTheme = 'ice';
+// Theme system: journey from La Rochelle to Ferney-Voltaire
+// Stages (each 150 pts): larochelle → vendee → auvergne → lyon → alps (final, stays)
+// Mariachi interlude: random portal event that temporarily swaps to 'mariachi' then returns
+const THEMES = ['larochelle', 'vendee', 'auvergne', 'lyon', 'alps'];
+const COOL_THEMES = ['larochelle', 'vendee', 'alps'];
+const WARM_THEMES = ['auvergne', 'lyon', 'mariachi'];
+let themeIndex = 0;           // index in THEMES array
+let currentTheme = THEMES[0]; // current display theme
 let nextThemeChange = 150;
 let doorSpawned = false;
-let themeFlash = 0; // white flash alpha on transition
+let themeFlash = 0;           // white flash alpha on transition
+// Mariachi interlude
+let mariachiActive = false;   // true while in mariachi interlude
+let mariachiReturnTheme = '';  // theme to return to after interlude
+let mariachiEndScore = 0;      // score at which mariachi ends
+// Random mariachi door: spawns somewhere between 75-85 pts into each stage
+let mariachiDoorSpawned = false;
+let mariachiDoorScore = 0;    // score threshold for mariachi door spawn
+
+function getStageTheme() {
+  return THEMES[themeIndex];
+}
+
+function syncVisibleObstacleThemes(themeName) {
+  for (const ob of obstacles) {
+    if (ob.isDoor) continue;
+    ob.theme = themeName;
+    if (ob.bird) ob.spawnTheme = themeName;
+  }
+}
 
 // Alex head image (used only when the entered date matches)
 const alexHead = new Image();
@@ -819,10 +844,17 @@ function reset() {
     recordLineX = -1000; // Hors écran si pas de score
   }
   
-  currentTheme = 'ice';
+  themeIndex = 0;
+  currentTheme = THEMES[0];
   nextThemeChange = 150;
   doorSpawned = false;
   themeFlash = 0;
+  mariachiActive = false;
+  mariachiReturnTheme = THEMES[0];
+  mariachiEndScore = 0;
+  mariachiDoorSpawned = false;
+  // Pick random mariachi door score within this stage (75-85 pts in)
+  mariachiDoorScore = 75 + Math.floor(Math.random() * 11);
 }
 
 // === FIREBASE FUNCTIONS ===
@@ -1282,7 +1314,7 @@ function drawIceSpike(baseX, baseW, height) {
   ctx.fill();
 }
 
-function drawCactus(ob) {
+function drawIceObstacle(ob) {
   if (ob.type === 'small') {
     drawIceSpike(ob.x + 3, 12, 34);
   } else if (ob.type === 'large') {
@@ -1304,7 +1336,184 @@ function drawCactus(ob) {
   }
 }
 
-// === DESERT THEME === //
+function drawBoatHull(x, y, w, h, sail = false) {
+  ctx.fillStyle = '#7A4A2A';
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + h * 0.35);
+  ctx.lineTo(x + w - 2, y + h * 0.35);
+  ctx.lineTo(x + w - 6, y + h);
+  ctx.lineTo(x + 6, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#A8683A';
+  ctx.fillRect(x + 4, y + h * 0.35, w - 8, 3);
+
+  ctx.strokeStyle = '#4C2E18';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.45, y + h * 0.35);
+  ctx.lineTo(x + w * 0.45, y - h * 0.5);
+  ctx.stroke();
+
+  if (sail) {
+    ctx.fillStyle = '#FFF7E6';
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.47, y - h * 0.5);
+    ctx.lineTo(x + w * 0.47, y + h * 0.1);
+    ctx.lineTo(x + w * 0.8, y - h * 0.1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.beginPath();
+  ctx.ellipse(x + w / 2, GROUND_Y + 1, w * 0.45, 3, 0, Math.PI, 0);
+  ctx.fill();
+}
+
+function drawBoatObstacle(ob) {
+  if (ob.type === 'small') {
+    drawBoatHull(ob.x + 1, GROUND_Y - 18, 16, 18, false);
+  } else if (ob.type === 'large') {
+    drawBoatHull(ob.x + 1, GROUND_Y - 24, 24, 24, true);
+    ctx.fillStyle = '#E74C3C';
+    ctx.beginPath();
+    ctx.arc(ob.x + 18, GROUND_Y - 26, 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (ob.type === 'double') {
+    drawBoatHull(ob.x, GROUND_Y - 16, 12, 16, false);
+    drawBoatHull(ob.x + 15, GROUND_Y - 20, 12, 20, false);
+  }
+}
+
+function drawHayBale(x, w, h) {
+  const y = GROUND_Y - h;
+  ctx.fillStyle = '#D8B04A';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 4);
+  ctx.fill();
+
+  ctx.fillStyle = '#E8C86A';
+  ctx.fillRect(x + 2, y + 2, w - 4, 4);
+
+  ctx.strokeStyle = '#A97B1D';
+  ctx.lineWidth = 1.2;
+  for (let yi = y + 6; yi < y + h - 2; yi += 5) {
+    ctx.beginPath();
+    ctx.moveTo(x + 2, yi);
+    ctx.lineTo(x + w - 2, yi + 1);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#8C5C14';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.33, y + 2);
+  ctx.lineTo(x + w * 0.33, y + h - 2);
+  ctx.moveTo(x + w * 0.66, y + 2);
+  ctx.lineTo(x + w * 0.66, y + h - 2);
+  ctx.stroke();
+}
+
+function drawHayObstacle(ob) {
+  if (ob.type === 'small') {
+    drawHayBale(ob.x + 2, 14, 34);
+  } else if (ob.type === 'large') {
+    drawHayBale(ob.x + 2, 22, 46);
+    ctx.fillStyle = '#7A5A28';
+    ctx.fillRect(ob.x + 12, GROUND_Y - 46 - 8, 2, 8);
+    ctx.fillStyle = '#3F8C3A';
+    ctx.beginPath();
+    ctx.moveTo(ob.x + 13, GROUND_Y - 54);
+    ctx.lineTo(ob.x + 18, GROUND_Y - 50);
+    ctx.lineTo(ob.x + 13, GROUND_Y - 47);
+    ctx.closePath();
+    ctx.fill();
+  } else if (ob.type === 'double') {
+    drawHayBale(ob.x, 12, 34);
+    drawHayBale(ob.x + 16, 12, 42);
+  }
+}
+
+function drawVolcanicRock(x, w, h, glowing = false) {
+  const y = GROUND_Y - h;
+  ctx.fillStyle = '#5A3327';
+  ctx.beginPath();
+  ctx.moveTo(x + 2, GROUND_Y);
+  ctx.lineTo(x + w * 0.2, y + h * 0.25);
+  ctx.lineTo(x + w * 0.45, y);
+  ctx.lineTo(x + w * 0.75, y + h * 0.18);
+  ctx.lineTo(x + w - 2, y + h * 0.5);
+  ctx.lineTo(x + w - 4, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#7A4735';
+  ctx.beginPath();
+  ctx.moveTo(x + 4, GROUND_Y - 2);
+  ctx.lineTo(x + w * 0.22, y + h * 0.35);
+  ctx.lineTo(x + w * 0.43, y + 4);
+  ctx.lineTo(x + w * 0.58, y + h * 0.16);
+  ctx.lineTo(x + w * 0.4, GROUND_Y - 3);
+  ctx.closePath();
+  ctx.fill();
+
+  if (glowing) {
+    ctx.strokeStyle = 'rgba(255, 110, 40, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.55, y + h * 0.1);
+    ctx.lineTo(x + w * 0.68, y + h * 0.45);
+    ctx.lineTo(x + w * 0.78, y + h * 0.75);
+    ctx.stroke();
+  }
+}
+
+function drawVolcanoObstacle(ob) {
+  if (ob.type === 'small') {
+    drawVolcanicRock(ob.x + 1, 16, 34, false);
+  } else if (ob.type === 'large') {
+    drawVolcanicRock(ob.x + 1, 24, 46, true);
+  } else if (ob.type === 'double') {
+    drawVolcanicRock(ob.x, 12, 34, false);
+    drawVolcanicRock(ob.x + 16, 12, 42, true);
+  }
+}
+
+function drawBarrier(x, w, h, withLight = false) {
+  const y = GROUND_Y - h;
+  ctx.fillStyle = '#34495E';
+  ctx.beginPath();
+  ctx.roundRect(x, y + h * 0.2, w, h * 0.8, 3);
+  ctx.fill();
+
+  ctx.fillStyle = '#F39C12';
+  ctx.fillRect(x + 2, y + h * 0.35, w - 4, 4);
+  ctx.fillRect(x + 2, y + h * 0.58, w - 4, 4);
+
+  ctx.fillStyle = '#22313F';
+  ctx.fillRect(x + 2, GROUND_Y - 6, 4, 6);
+  ctx.fillRect(x + w - 6, GROUND_Y - 6, 4, 6);
+
+  if (withLight) {
+    ctx.fillStyle = '#E74C3C';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCityObstacle(ob) {
+  if (ob.type === 'small') {
+    drawBarrier(ob.x + 2, 14, 34, false);
+  } else if (ob.type === 'large') {
+    drawBarrier(ob.x + 2, 22, 46, true);
+  } else if (ob.type === 'double') {
+    drawBarrier(ob.x, 12, 34, false);
+    drawBarrier(ob.x + 16, 12, 42, false);
+  }
+}
+
+// === WARM / DESERT-LIKE OBSTACLES === //
 
 function drawBrickStack(x, w, h) {
   const BRICK = '#B8563A';
@@ -1356,6 +1565,58 @@ function drawBrickObstacle(ob) {
     drawBrickStack(ob.x, 12, 34);
     drawBrickStack(ob.x + 16, 12, 42);
   }
+}
+
+function drawObstacleForTheme(themeName, ob) {
+  if (themeName === 'larochelle') drawBoatObstacle(ob);
+  else if (themeName === 'vendee') drawHayObstacle(ob);
+  else if (themeName === 'auvergne') drawVolcanoObstacle(ob);
+  else if (themeName === 'lyon') drawCityObstacle(ob);
+  else if (themeName === 'alps') drawIceObstacle(ob);
+  else drawBrickObstacle(ob);
+}
+
+function drawObstacleContrastBackdrop(ob, themeName, airborne = false) {
+  const cx = ob.x + ob.w / 2;
+  const cy = airborne ? ob.y + ob.h / 2 : GROUND_Y - ob.h * 0.45;
+  const radius = Math.max(ob.w * 1.6, ob.h * 0.9, 18);
+  const useLightGlow = themeName === 'lyon';
+
+  ctx.save();
+  const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius);
+  if (useLightGlow) {
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+    grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.06)');
+  } else {
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.22)');
+    grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.07)');
+  }
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+  if (!airborne) {
+    ctx.fillStyle = useLightGlow ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(cx, GROUND_Y + 1, Math.max(ob.w * 0.8, 10), 4, 0, Math.PI, 0);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawObstacleWithContrast(themeName, renderFn) {
+  ctx.save();
+  if (themeName === 'lyon') {
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.32)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 0;
+  } else {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+  }
+  renderFn();
+  ctx.restore();
 }
 
 // Mexicain volant : sombrero + poncho + moustache + ailes
@@ -1468,7 +1729,12 @@ function drawDoor(ob) {
   const progress = raw * raw * (3 - 2 * raw);
 
   // Palette du theme cible
-  const nextIsDesert = currentTheme === 'ice';
+  // Mariachi door: warm festive glow; normal door: use next stage palette
+  const isMariDoor = ob.isMariachi && !mariachiActive;
+  const nextThemeIndex = mariachiActive
+    ? THEMES.indexOf(mariachiReturnTheme)
+    : Math.min(themeIndex + 1, THEMES.length - 1);
+  const nextIsDesert = isMariDoor || (nextThemeIndex >= 2); // warm tones
   const innerCore = '#FFFFFF';
   const innerGlow = nextIsDesert ? '#FF7A2A' : '#5FC0E8';
   const frameAccent = nextIsDesert ? '#FFB347' : '#A8E4FF';
@@ -1729,94 +1995,70 @@ function drawBird(ob) {
 }
 
 function drawGround() {
-  if (currentTheme === 'ice') {
-    // Icy ground gradient (white snow → cool blue shadow)
+  const isWarm = WARM_THEMES.includes(currentTheme);
+
+  if (isWarm) {
+    // Warm sandy/cobblestone ground
     const grd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
-    grd.addColorStop(0, '#F5FBFF');
-    grd.addColorStop(1, '#B8D4E8');
+    if (currentTheme === 'lyon') {
+      grd.addColorStop(0, '#2A3A50'); grd.addColorStop(1, '#151E2A');
+    } else {
+      grd.addColorStop(0, '#F5D4A3'); grd.addColorStop(1, '#C08548');
+    }
     ctx.fillStyle = grd;
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-    ctx.strokeStyle = '#7FB0D4';
+    ctx.strokeStyle = currentTheme === 'lyon' ? '#3A5A7A' : '#A6723E';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    ctx.lineTo(W, GROUND_Y);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
 
-    for (let i = 0; i < W + 20; i += 3) {
-      const xp = (i - groundOffset % 20);
-      if (Math.sin(xp * 0.5) > 0.7) {
-        ctx.fillStyle = '#A8C8DE';
-        ctx.fillRect(xp, GROUND_Y + 4 + (xp % 5), 2, 1);
+    if (currentTheme !== 'lyon') {
+      for (let i = 0; i < W + 20; i += 3) {
+        const xp = (i - groundOffset % 20);
+        if (Math.sin(xp * 0.5) > 0.7) { ctx.fillStyle = '#8C5A2E'; ctx.fillRect(xp, GROUND_Y + 4 + (xp % 5), 2, 1); }
       }
-    }
-
-    ctx.strokeStyle = 'rgba(120, 160, 195, 0.35)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < W + 60; i += 60) {
-      const xp = ((i - groundOffset * 0.8) % (W + 60));
-      if (xp < 0) continue;
-      ctx.beginPath();
-      ctx.moveTo(xp, GROUND_Y + 6);
-      ctx.lineTo(xp + 8, GROUND_Y + 10);
-      ctx.lineTo(xp + 4, GROUND_Y + 18);
-      ctx.lineTo(xp + 14, GROUND_Y + 24);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = '#FFFFFF';
-    for (let i = 0; i < W + 40; i += 40) {
-      const xp = ((i - groundOffset * 0.8) % (W + 40));
-      if (xp < 0) continue;
-      ctx.beginPath();
-      ctx.arc(xp, GROUND_Y, 3, Math.PI, 0);
-      ctx.fill();
+      ctx.strokeStyle = 'rgba(140, 90, 46, 0.35)'; ctx.lineWidth = 1;
+      for (let i = 0; i < W + 60; i += 60) {
+        const xp = ((i - groundOffset * 0.8) % (W + 60)); if (xp < 0) continue;
+        ctx.beginPath(); ctx.moveTo(xp, GROUND_Y + 8); ctx.quadraticCurveTo(xp + 15, GROUND_Y + 5, xp + 30, GROUND_Y + 8); ctx.stroke();
+      }
+      ctx.fillStyle = '#E8BC7E';
+      for (let i = 0; i < W + 50; i += 50) {
+        const xp = ((i - groundOffset * 0.8) % (W + 50)); if (xp < 0) continue;
+        ctx.beginPath(); ctx.arc(xp, GROUND_Y, 4, Math.PI, 0); ctx.fill();
+      }
     }
   } else {
-    // Desert ground gradient (sand → deeper warm shadow)
+    // Cool/icy/coastal ground (La Rochelle, Vendée, Alps)
     const grd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
-    grd.addColorStop(0, '#F5D4A3');
-    grd.addColorStop(1, '#C08548');
+    if (currentTheme === 'larochelle') {
+      grd.addColorStop(0, '#8A9EA8'); grd.addColorStop(1, '#5A7080');
+    } else if (currentTheme === 'vendee') {
+      grd.addColorStop(0, '#8AC070'); grd.addColorStop(1, '#5A9040');
+    } else {
+      grd.addColorStop(0, '#F5FBFF'); grd.addColorStop(1, '#B8D4E8');
+    }
     ctx.fillStyle = grd;
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-    ctx.strokeStyle = '#A6723E';
+    ctx.strokeStyle = currentTheme === 'vendee' ? '#5A9040' : '#7FB0D4';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    ctx.lineTo(W, GROUND_Y);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
 
-    // Sand grains / pebbles
     for (let i = 0; i < W + 20; i += 3) {
       const xp = (i - groundOffset % 20);
       if (Math.sin(xp * 0.5) > 0.7) {
-        ctx.fillStyle = '#8C5A2E';
+        ctx.fillStyle = currentTheme === 'vendee' ? '#4A7830' : '#A8C8DE';
         ctx.fillRect(xp, GROUND_Y + 4 + (xp % 5), 2, 1);
       }
     }
 
-    // Sand ripples (waves of dunes)
-    ctx.strokeStyle = 'rgba(140, 90, 46, 0.35)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < W + 60; i += 60) {
-      const xp = ((i - groundOffset * 0.8) % (W + 60));
-      if (xp < 0) continue;
-      ctx.beginPath();
-      ctx.moveTo(xp, GROUND_Y + 8);
-      ctx.quadraticCurveTo(xp + 15, GROUND_Y + 5, xp + 30, GROUND_Y + 8);
-      ctx.stroke();
-    }
-
-    // Small dune bumps along ground line
-    ctx.fillStyle = '#E8BC7E';
-    for (let i = 0; i < W + 50; i += 50) {
-      const xp = ((i - groundOffset * 0.8) % (W + 50));
-      if (xp < 0) continue;
-      ctx.beginPath();
-      ctx.arc(xp, GROUND_Y, 4, Math.PI, 0);
-      ctx.fill();
+    if (currentTheme === 'alps') {
+      ctx.fillStyle = '#FFFFFF';
+      for (let i = 0; i < W + 40; i += 40) {
+        const xp = ((i - groundOffset * 0.8) % (W + 40)); if (xp < 0) continue;
+        ctx.beginPath(); ctx.arc(xp, GROUND_Y, 3, Math.PI, 0); ctx.fill();
+      }
     }
   }
 }
@@ -1914,30 +2156,31 @@ function spawnObstacle() {
   // Probabilité d'oiseaux augmente avec le score (45% à 250pts, 70% à 500pts)
   const birdChance = Math.min(0.7, 0.2 + (score / 500) * 0.5);
   const r = Math.random();
+  const obstacleTheme = currentTheme;
   let ob;
   
   if (r < 0.3) {
-    ob = { x: W, type: 'small', w: 18, h: 34, bird: false };
+    ob = { x: W, type: 'small', w: 18, h: 34, bird: false, theme: obstacleTheme };
   } else if (r < 0.55) {
-    ob = { x: W, type: 'large', w: 28, h: 46, bird: false };
+    ob = { x: W, type: 'large', w: 28, h: 46, bird: false, theme: obstacleTheme };
   } else if (r < 1 - birdChance) {
-    ob = { x: W, type: 'double', w: 28, h: 42, bird: false };
+    ob = { x: W, type: 'double', w: 28, h: 42, bird: false, theme: obstacleTheme };
   } else {
     // Pingu le pingouin a hauteur variable : force sauter OU glisser selon le cas
     const heights = [50, 70, 90];
     const h = heights[Math.floor(Math.random() * heights.length)];
-    ob = { x: W, y: GROUND_Y - h, type: 'bird', w: 26, h: 36, bird: true, spawnTheme: currentTheme };
+    ob = { x: W, y: GROUND_Y - h, type: 'bird', w: 26, h: 36, bird: true, spawnTheme: obstacleTheme, theme: obstacleTheme };
     // Son a l'apparition selon le theme au moment du spawn
     if (gameState === 'running') {
-      if (currentTheme === 'ice') {
-        stopAllSounds();
-        const pinguSound = document.getElementById('jump-sound');
-        if (pinguSound) { pinguSound.currentTime = 0; pinguSound.play().catch(() => {}); }
-      } else {
+      if (obstacleTheme === 'mariachi') {
         stopAllSounds();
         const idx = Math.floor(Math.random() * 3);
         const mariachiSound = document.getElementById('mariachi-sound-' + idx);
         if (mariachiSound) { mariachiSound.currentTime = 0; mariachiSound.play().catch(() => {}); }
+      } else {
+        stopAllSounds();
+        const pinguSound = document.getElementById('jump-sound');
+        if (pinguSound) { pinguSound.currentTime = 0; pinguSound.play().catch(() => {}); }
       }
     }
   }
@@ -2019,15 +2262,37 @@ function update() {
   nextObstacleIn -= 1;
   if (nextObstacleIn <= 0) spawnObstacle();
 
+  // Spawn mariachi interlude door (random within 75-85 pts of each stage), unless already in mariachi
+  if (!mariachiActive && !mariachiDoorSpawned && themeIndex < THEMES.length - 1) {
+    const stageStart = nextThemeChange - 150;
+    if (Math.floor(score) >= stageStart + mariachiDoorScore) {
+      const last = obstacles[obstacles.length - 1];
+      const gapOK = !last || (W - last.x >= 180);
+      if (gapOK) {
+        obstacles.push({ x: W + 40, type: 'door', w: 70, h: GROUND_Y, bird: false, isDoor: true, isMariachi: true });
+        mariachiDoorSpawned = true;
+        nextObstacleIn = Math.max(nextObstacleIn, 90);
+      }
+    }
+  }
+
+  // End mariachi interlude when score threshold reached
+  if (mariachiActive && score >= mariachiEndScore) {
+    mariachiActive = false;
+    currentTheme = getStageTheme();
+    mariachiReturnTheme = currentTheme;
+    syncVisibleObstacleThemes(currentTheme);
+    themeFlash = 0.5;
+  }
+
   // Spawn a theme-transition door when threshold is reached (and no door already queued)
-  if (!doorSpawned && Math.floor(score) >= nextThemeChange) {
-    // Ensure enough gap from last obstacle before spawning the door
+  if (!doorSpawned && !mariachiActive && themeIndex < THEMES.length - 1 && Math.floor(score) >= nextThemeChange) {
     const last = obstacles[obstacles.length - 1];
     const gapOK = !last || (W - last.x >= 180);
     if (gapOK) {
-      obstacles.push({ x: W + 40, type: 'door', w: 70, h: GROUND_Y, bird: false, isDoor: true });
+      obstacles.push({ x: W + 40, type: 'door', w: 70, h: GROUND_Y, bird: false, isDoor: true, isMariachi: false });
       doorSpawned = true;
-      nextObstacleIn = Math.max(nextObstacleIn, 90); // leave room after the door
+      nextObstacleIn = Math.max(nextObstacleIn, 90);
     }
   }
 
@@ -2038,10 +2303,28 @@ function update() {
   for (const ob of obstacles) {
     if (ob.isDoor && !ob.triggered && ob.x + ob.w / 2 < dino.x) {
       ob.triggered = true;
-      currentTheme = currentTheme === 'ice' ? 'desert' : 'ice';
-      nextThemeChange += 150;
-      doorSpawned = false;
-      themeFlash = 0.7;
+      if (ob.isMariachi) {
+        // Enter mariachi interlude
+        mariachiReturnTheme = getStageTheme();
+        mariachiActive = true;
+        mariachiEndScore = Math.min(score + 75 + Math.random() * 10, nextThemeChange - 5);
+        currentTheme = 'mariachi';
+        syncVisibleObstacleThemes(currentTheme);
+        themeFlash = 0.7;
+      } else {
+        // Normal stage transition
+        themeIndex = Math.min(themeIndex + 1, THEMES.length - 1);
+        currentTheme = getStageTheme();
+        syncVisibleObstacleThemes(currentTheme);
+        if (themeIndex < THEMES.length - 1) {
+          nextThemeChange += 150;
+          doorSpawned = false;
+          mariachiDoorSpawned = false;
+          // Pick new mariachi door position for next stage
+          mariachiDoorScore = 75 + Math.floor(Math.random() * 11);
+        }
+        themeFlash = 0.7;
+      }
     }
   }
 
@@ -2100,100 +2383,428 @@ function update() {
   }
 }
 
+// ============================================================
+// BACKGROUND DRAWING FUNCTIONS PER THEME
+// ============================================================
+
+// --- LA ROCHELLE : vieux port, 2 tours médiévales, mer ---
+function drawBgLaRochelle() {
+  // Sky: bright Atlantic blue
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#4A90C8');
+  sky.addColorStop(0.6, '#9AC8EA');
+  sky.addColorStop(1, '#D0E8F5');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Sun
+  ctx.fillStyle = 'rgba(255,230,120,0.6)';
+  ctx.beginPath(); ctx.arc(W - 80, 45, 36, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,245,180,0.9)';
+  ctx.beginPath(); ctx.arc(W - 80, 45, 20, 0, Math.PI * 2); ctx.fill();
+
+  // Sea/harbour (flat band of water)
+  const sea = ctx.createLinearGradient(0, GROUND_Y - 50, 0, GROUND_Y);
+  sea.addColorStop(0, '#3A7DB0');
+  sea.addColorStop(1, '#1A5C8A');
+  ctx.fillStyle = sea;
+  ctx.fillRect(0, GROUND_Y - 50, W, 50);
+  // Sea glints
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
+  for (let i = 0; i < W; i += 60) {
+    const xw = (i - groundOffset * 0.3) % (W + 60);
+    ctx.beginPath(); ctx.moveTo(xw, GROUND_Y - 30); ctx.lineTo(xw + 18, GROUND_Y - 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(xw + 10, GROUND_Y - 20); ctx.lineTo(xw + 26, GROUND_Y - 20); ctx.stroke();
+  }
+
+  // Helper: draw one medieval tower
+  function drawTour(bx, h, w) {
+    // Main body
+    ctx.fillStyle = '#8A7A6A';
+    ctx.fillRect(bx, GROUND_Y - h, w, h);
+    // Stone lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1;
+    for (let yi = 12; yi < h; yi += 12) {
+      ctx.beginPath(); ctx.moveTo(bx, GROUND_Y - yi); ctx.lineTo(bx + w, GROUND_Y - yi); ctx.stroke();
+    }
+    // Highlight left
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(bx, GROUND_Y - h, 4, h);
+    // Battlements (créneaux)
+    ctx.fillStyle = '#9A8A7A';
+    const mw = 6, mg = 5;
+    for (let mx = bx; mx < bx + w; mx += mw + mg) {
+      ctx.fillRect(mx, GROUND_Y - h - 10, mw, 10);
+    }
+    // Dark arch entrance
+    ctx.fillStyle = '#3A2E26';
+    ctx.beginPath();
+    ctx.roundRect(bx + w / 2 - 5, GROUND_Y - 28, 10, 28, [5, 5, 0, 0]);
+    ctx.fill();
+    // Small window
+    ctx.fillStyle = '#1A2A3A';
+    ctx.beginPath();
+    ctx.arc(bx + w / 2, GROUND_Y - h + 22, 4, Math.PI, 0);
+    ctx.fillRect(bx + w / 2 - 4, GROUND_Y - h + 22, 8, 6);
+    ctx.fill();
+    // Flag on top
+    ctx.strokeStyle = '#4A4A4A'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx + w / 2, GROUND_Y - h - 10); ctx.lineTo(bx + w / 2, GROUND_Y - h - 26); ctx.stroke();
+    ctx.fillStyle = '#DA291C';
+    ctx.fillRect(bx + w / 2, GROUND_Y - h - 26, 12, 8);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(bx + w / 2 + 2, GROUND_Y - h - 26, 8, 3);
+    ctx.fillRect(bx + w / 2 + 5, GROUND_Y - h - 26, 3, 8);
+  }
+
+  // Quai walls (stone embankment)
+  ctx.fillStyle = '#9A8A76';
+  ctx.fillRect(0, GROUND_Y - 52, W, 4);
+
+  // Scrolling offset for the towers (slow parallax)
+  const tOff = (groundOffset * 0.15) % 520;
+  drawTour(220 - tOff, 110, 38);
+  drawTour(290 - tOff, 100, 32);
+  // Second pair further right
+  drawTour(220 - tOff + 520, 110, 38);
+  drawTour(290 - tOff + 520, 100, 32);
+
+  // Sailing boat
+  const bx2 = ((550 - groundOffset * 0.25) % (W + 160)) - 60;
+  ctx.fillStyle = '#FAFAFA';
+  ctx.beginPath();
+  ctx.moveTo(bx2 + 18, GROUND_Y - 60); ctx.lineTo(bx2 + 18, GROUND_Y - 90); ctx.lineTo(bx2 + 40, GROUND_Y - 60); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#D44';
+  ctx.beginPath();
+  ctx.moveTo(bx2 + 20, GROUND_Y - 60); ctx.lineTo(bx2 + 20, GROUND_Y - 80); ctx.lineTo(bx2 + 5, GROUND_Y - 60); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8A7060';
+  ctx.beginPath();
+  ctx.ellipse(bx2 + 20, GROUND_Y - 52, 22, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// --- VENDEE : bocage, moulins à vent, plaine verdoyante ---
+function drawBgVendee() {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#7FBDE0');
+  sky.addColorStop(0.5, '#B8D8EE');
+  sky.addColorStop(1, '#DCF0F8');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Soft clouds inline
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  const cOff = (groundOffset * 0.18) % (W + 100);
+  [[80, 35], [260, 28], [480, 40], [650, 32]].forEach(([cx, cy]) => {
+    const px = cx - cOff;
+    ctx.beginPath(); ctx.arc(px, cy, 14, 0, Math.PI*2);
+    ctx.arc(px+14, cy-4, 18, 0, Math.PI*2);
+    ctx.arc(px+30, cy, 13, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px+820, cy+5, 14, 0, Math.PI*2);
+    ctx.arc(px+834, cy, 18, 0, Math.PI*2);
+    ctx.arc(px+850, cy+5, 13, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Rolling hills background
+  ctx.fillStyle = 'rgba(100, 160, 80, 0.4)';
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  for (let x = 0; x <= W; x += 30) {
+    const y = GROUND_Y - 30 - Math.sin((x + groundOffset * 0.1) * 0.015) * 25;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, GROUND_Y); ctx.closePath(); ctx.fill();
+
+  // Windmill helper
+  function drawMoulin(mx) {
+    const base = GROUND_Y - 8;
+    // Tower (tapering)
+    ctx.fillStyle = '#C8B89A';
+    ctx.beginPath();
+    ctx.moveTo(mx - 10, base); ctx.lineTo(mx - 6, base - 60); ctx.lineTo(mx + 6, base - 60); ctx.lineTo(mx + 10, base); ctx.closePath(); ctx.fill();
+    // Cap
+    ctx.fillStyle = '#A08870';
+    ctx.beginPath(); ctx.ellipse(mx, base - 60, 8, 5, 0, Math.PI, 0); ctx.fill();
+    // Blades (rotating)
+    const angle = (frame * 0.015 + mx * 0.03);
+    ctx.strokeStyle = '#7A6050'; ctx.lineWidth = 2;
+    for (let b = 0; b < 4; b++) {
+      const a = angle + b * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(mx, base - 62);
+      ctx.lineTo(mx + Math.cos(a) * 22, base - 62 + Math.sin(a) * 22);
+      ctx.stroke();
+      ctx.fillStyle = '#D4C8B0';
+      ctx.beginPath();
+      ctx.moveTo(mx, base - 62);
+      ctx.lineTo(mx + Math.cos(a) * 22, base - 62 + Math.sin(a) * 22);
+      ctx.lineTo(mx + Math.cos(a + 0.2) * 20, base - 62 + Math.sin(a + 0.2) * 20);
+      ctx.closePath(); ctx.fill();
+    }
+    // Door
+    ctx.fillStyle = '#4A3828';
+    ctx.beginPath(); ctx.roundRect(mx - 4, base - 18, 8, 18, [4, 4, 0, 0]); ctx.fill();
+  }
+
+  const mOff = (groundOffset * 0.2) % 400;
+  drawMoulin(150 - mOff);
+  drawMoulin(380 - mOff);
+  drawMoulin(150 - mOff + 400);
+  drawMoulin(380 - mOff + 400);
+
+  // Bocage hedge lines
+  ctx.fillStyle = 'rgba(60, 110, 50, 0.5)';
+  for (let i = 0; i < W + 100; i += 120) {
+    const hx = (i - groundOffset * 0.15) % (W + 120);
+    ctx.fillRect(hx, GROUND_Y - 40, 8, 40);
+    ctx.beginPath(); ctx.arc(hx + 4, GROUND_Y - 42, 8, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// --- AUVERGNE : volcans puys, couleurs chaudes ---
+function drawBgAuvergne() {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#8B5E3C');
+  sky.addColorStop(0.5, '#C4835A');
+  sky.addColorStop(1, '#E8B990');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Hazy sun behind smoke
+  ctx.fillStyle = 'rgba(255,180,60,0.35)';
+  ctx.beginPath(); ctx.arc(W / 2, 60, 50, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,200,100,0.6)';
+  ctx.beginPath(); ctx.arc(W / 2, 60, 28, 0, Math.PI * 2); ctx.fill();
+
+  // Volcanic smoke puffs (animated)
+  ctx.fillStyle = 'rgba(180,140,100,0.25)';
+  for (let i = 0; i < 4; i++) {
+    const cx2 = ((i * 190 + frame * 0.3) % (W + 80)) - 40;
+    const cy2 = 30 + Math.sin(frame * 0.02 + i) * 8;
+    ctx.beginPath(); ctx.arc(cx2, cy2, 18 + i * 4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Volcano silhouettes (conical puys)
+  function drawPuy(px, ph, col) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(px - ph * 0.8, GROUND_Y);
+    ctx.lineTo(px, GROUND_Y - ph);
+    ctx.lineTo(px + ph * 0.8, GROUND_Y);
+    ctx.closePath(); ctx.fill();
+    // Crater rim
+    ctx.fillStyle = 'rgba(80,30,10,0.6)';
+    ctx.beginPath();
+    ctx.arc(px, GROUND_Y - ph + 4, 8, Math.PI, 0); ctx.fill();
+    // Lava glow
+    ctx.fillStyle = 'rgba(255,80,0,0.3)';
+    ctx.beginPath();
+    ctx.arc(px, GROUND_Y - ph + 2, 5, 0, Math.PI*2); ctx.fill();
+    // Lava streak
+    ctx.strokeStyle = 'rgba(255,100,0,0.35)'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(px + 4, GROUND_Y - ph + 8);
+    ctx.quadraticCurveTo(px + 14, GROUND_Y - ph / 2, px + 20, GROUND_Y);
+    ctx.stroke();
+  }
+
+  const vOff = (groundOffset * 0.12) % 450;
+  drawPuy(120 - vOff, 100, '#6B3A28');
+  drawPuy(310 - vOff, 130, '#8A4A30');
+  drawPuy(500 - vOff, 90, '#7A3E26');
+  drawPuy(120 - vOff + 450, 100, '#6B3A28');
+  drawPuy(310 - vOff + 450, 130, '#8A4A30');
+}
+
+// --- LYON : ville, cathédrale Fourvière, Rhône ---
+function drawBgLyon() {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#2C3E6A');
+  sky.addColorStop(0.5, '#4A6490');
+  sky.addColorStop(1, '#8AADCC');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // City lights glow
+  ctx.fillStyle = 'rgba(255,200,80,0.08)';
+  ctx.fillRect(0, GROUND_Y - 100, W, 100);
+
+  // Fourvière basilica silhouette (statique, on the hill)
+  const fOff = (groundOffset * 0.08) % (W + 300);
+  function drawFourviere(fx) {
+    ctx.fillStyle = 'rgba(100,80,60,0.7)';
+    // Hill
+    ctx.beginPath();
+    ctx.moveTo(fx - 80, GROUND_Y); ctx.quadraticCurveTo(fx, GROUND_Y - 80, fx + 80, GROUND_Y); ctx.closePath(); ctx.fill();
+    // Basilica towers
+    ctx.fillStyle = 'rgba(200,190,170,0.8)';
+    ctx.fillRect(fx - 18, GROUND_Y - 130, 10, 55);
+    ctx.fillRect(fx + 8, GROUND_Y - 140, 12, 65);
+    // Spires
+    ctx.beginPath(); ctx.moveTo(fx - 18, GROUND_Y - 130); ctx.lineTo(fx - 13, GROUND_Y - 150); ctx.lineTo(fx - 8, GROUND_Y - 130); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(fx + 8, GROUND_Y - 140); ctx.lineTo(fx + 14, GROUND_Y - 165); ctx.lineTo(fx + 20, GROUND_Y - 140); ctx.closePath(); ctx.fill();
+    // Rose window
+    ctx.fillStyle = 'rgba(255,200,80,0.5)';
+    ctx.beginPath(); ctx.arc(fx + 2, GROUND_Y - 110, 5, 0, Math.PI*2); ctx.fill();
+  }
+  drawFourviere(300 - fOff);
+  drawFourviere(300 - fOff + W + 300);
+
+  // City buildings skyline (scrolling)
+  const bOff = (groundOffset * 0.3) % (W + 400);
+  const buildings = [
+    [0, 80, 35], [45, 60, 28], [80, 90, 22], [110, 50, 30], [150, 75, 25],
+    [185, 65, 20], [210, 85, 30], [250, 55, 22], [280, 70, 28], [318, 95, 18],
+    [345, 60, 24], [378, 80, 26], [415, 50, 20], [445, 72, 30], [485, 88, 22],
+  ];
+  buildings.forEach(([bx, bh, bw]) => {
+    const rx = bx - bOff;
+    ctx.fillStyle = '#2A3A5A';
+    ctx.fillRect(rx, GROUND_Y - bh, bw, bh);
+    // Windows (lit up)
+    ctx.fillStyle = 'rgba(255,220,100,0.7)';
+    for (let wy = GROUND_Y - bh + 6; wy < GROUND_Y - 6; wy += 12) {
+      for (let wx = rx + 4; wx < rx + bw - 4; wx += 8) {
+        if ((wx + wy + frame) % 7 !== 0) ctx.fillRect(wx, wy, 4, 5);
+      }
+    }
+    // Mirror on the right
+    ctx.fillStyle = '#2A3A5A';
+    ctx.fillRect(rx + W + 400, GROUND_Y - bh, bw, bh);
+    ctx.fillStyle = 'rgba(255,220,100,0.7)';
+    for (let wy = GROUND_Y - bh + 6; wy < GROUND_Y - 6; wy += 12) {
+      for (let wx = rx + W + 404; wx < rx + W + 400 + bw - 4; wx += 8) {
+        if ((wx + wy + frame) % 7 !== 0) ctx.fillRect(wx, wy, 4, 5);
+      }
+    }
+  });
+
+  // Rhône river (lower band)
+  const river = ctx.createLinearGradient(0, GROUND_Y - 45, 0, GROUND_Y);
+  river.addColorStop(0, '#1A3A5C');
+  river.addColorStop(1, '#0A2040');
+  ctx.fillStyle = river;
+  ctx.fillRect(0, GROUND_Y - 45, W, 45);
+  // Reflections
+  ctx.strokeStyle = 'rgba(255,200,80,0.2)'; ctx.lineWidth = 2;
+  for (let i = 0; i < W; i += 70) {
+    const rx2 = (i - groundOffset * 0.4) % (W + 70);
+    ctx.beginPath(); ctx.moveTo(rx2, GROUND_Y - 25); ctx.lineTo(rx2 + 30, GROUND_Y - 22); ctx.stroke();
+  }
+}
+
+// --- ALPS (final) : Swiss mountains + neige --- (unchanged from original)
+function drawBgAlps() {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#BCDCF5');
+  sky.addColorStop(0.5, '#DEEFFB');
+  sky.addColorStop(1, '#F4FAFF');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+  ctx.fillStyle = 'rgba(220, 240, 255, 0.55)';
+  ctx.beginPath(); ctx.arc(W - 110, 55, 40, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(235, 248, 255, 0.85)';
+  ctx.beginPath(); ctx.arc(W - 110, 55, 24, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = 'rgba(170, 200, 225, 0.55)';
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  ctx.lineTo(60, 150); ctx.lineTo(130, 180); ctx.lineTo(210, 130);
+  ctx.lineTo(290, 170); ctx.lineTo(360, 150); ctx.lineTo(440, 185);
+  ctx.lineTo(520, 140); ctx.lineTo(610, 175); ctx.lineTo(690, 145);
+  ctx.lineTo(770, 180); ctx.lineTo(W, 160); ctx.lineTo(W, GROUND_Y);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.beginPath();
+  ctx.moveTo(210, 130); ctx.lineTo(225, 145); ctx.lineTo(195, 145); ctx.closePath();
+  ctx.moveTo(520, 140); ctx.lineTo(538, 158); ctx.lineTo(505, 158); ctx.closePath();
+  ctx.moveTo(690, 145); ctx.lineTo(705, 160); ctx.lineTo(677, 160); ctx.closePath();
+  ctx.fill();
+
+  drawSwissFlag(210, 130);
+  drawSwissFlag(520, 140);
+  drawSwissFlag(690, 145);
+}
+
+// --- MARIACHI INTERLUDE : fête mexicaine ---
+function drawBgMariachi() {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0, '#FFC88A');
+  sky.addColorStop(0.5, '#FFE0B5');
+  sky.addColorStop(1, '#FFF2DA');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Hot sun
+  ctx.fillStyle = 'rgba(255, 180, 100, 0.55)';
+  ctx.beginPath(); ctx.arc(W - 110, 55, 45, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255, 200, 120, 0.85)';
+  ctx.beginPath(); ctx.arc(W - 110, 55, 28, 0, Math.PI * 2); ctx.fill();
+
+  // Distant mesas
+  ctx.fillStyle = 'rgba(180, 120, 80, 0.5)';
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  ctx.lineTo(50, 170); ctx.lineTo(110, 175); ctx.lineTo(140, 155);
+  ctx.lineTo(200, 155); ctx.lineTo(230, 180); ctx.lineTo(310, 170);
+  ctx.lineTo(360, 150); ctx.lineTo(420, 150); ctx.lineTo(460, 185);
+  ctx.lineTo(540, 160); ctx.lineTo(590, 160); ctx.lineTo(630, 180);
+  ctx.lineTo(710, 165); ctx.lineTo(760, 165); ctx.lineTo(W, 180);
+  ctx.lineTo(W, GROUND_Y); ctx.closePath(); ctx.fill();
+
+  // Cacti silhouettes
+  ctx.fillStyle = 'rgba(120, 90, 60, 0.45)';
+  [100, 270, 480, 680].forEach(mcx => {
+    ctx.fillRect(mcx - 2, GROUND_Y - 22, 4, 22);
+    ctx.fillRect(mcx - 6, GROUND_Y - 15, 4, 8);
+    ctx.fillRect(mcx + 2, GROUND_Y - 18, 4, 8);
+  });
+
+  // Papel picado (banderoles festives colorées)
+  const colors = ['#E74C3C','#F1C40F','#2ECC71','#3498DB','#9B59B6','#E67E22'];
+  for (let i = 0; i < 8; i++) {
+    const px1 = (i * 110 - groundOffset * 0.4) % (W + 110);
+    const px2 = px1 + 110;
+    const midY = 25 + Math.sin((i + frame * 0.02)) * 4;
+    ctx.strokeStyle = '#8B6914'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px1, 12); ctx.quadraticCurveTo((px1 + px2) / 2, midY, px2, 12); ctx.stroke();
+    // Triangle flags
+    for (let j = 0; j < 5; j++) {
+      const tx = px1 + j * 22 + 5;
+      const ty1 = 12 + Math.sin((tx + frame * 0.02) * 0.1) * 2;
+      ctx.fillStyle = colors[(i + j) % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(tx, ty1); ctx.lineTo(tx + 10, ty1); ctx.lineTo(tx + 5, ty1 + 14); ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
 function draw() {
   ctx.clearRect(0, 0, W, H);
 
-  if (currentTheme === 'ice') {
-    // Soft icy sky gradient
-    const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-    sky.addColorStop(0, '#BCDCF5');
-    sky.addColorStop(0.5, '#DEEFFB');
-    sky.addColorStop(1, '#F4FAFF');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, GROUND_Y);
-
-    ctx.fillStyle = 'rgba(220, 240, 255, 0.55)';
-    ctx.beginPath();
-    ctx.arc(W - 110, 55, 40, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(235, 248, 255, 0.85)';
-    ctx.beginPath();
-    ctx.arc(W - 110, 55, 24, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(170, 200, 225, 0.55)';
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    ctx.lineTo(60, 150); ctx.lineTo(130, 180); ctx.lineTo(210, 130);
-    ctx.lineTo(290, 170); ctx.lineTo(360, 150); ctx.lineTo(440, 185);
-    ctx.lineTo(520, 140); ctx.lineTo(610, 175); ctx.lineTo(690, 145);
-    ctx.lineTo(770, 180); ctx.lineTo(W, 160); ctx.lineTo(W, GROUND_Y);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.beginPath();
-    ctx.moveTo(210, 130); ctx.lineTo(225, 145); ctx.lineTo(195, 145); ctx.closePath();
-    ctx.moveTo(520, 140); ctx.lineTo(538, 158); ctx.lineTo(505, 158); ctx.closePath();
-    ctx.moveTo(690, 145); ctx.lineTo(705, 160); ctx.lineTo(677, 160); ctx.closePath();
-    ctx.fill();
-
-    drawSwissFlag(210, 130);
-    drawSwissFlag(520, 140);
-    drawSwissFlag(690, 145);
-  } else {
-    // Desert sky gradient (warm sunset tones)
-    const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-    sky.addColorStop(0, '#FFC88A');
-    sky.addColorStop(0.5, '#FFE0B5');
-    sky.addColorStop(1, '#FFF2DA');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, GROUND_Y);
-
-    // Hot sun (saturated orange)
-    ctx.fillStyle = 'rgba(255, 180, 100, 0.55)';
-    ctx.beginPath();
-    ctx.arc(W - 110, 55, 45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255, 200, 120, 0.85)';
-    ctx.beginPath();
-    ctx.arc(W - 110, 55, 28, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Distant mesas / desert mountains (warm brown silhouette)
-    ctx.fillStyle = 'rgba(180, 120, 80, 0.5)';
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    ctx.lineTo(50, 170); ctx.lineTo(110, 175); ctx.lineTo(140, 155);
-    ctx.lineTo(200, 155); ctx.lineTo(230, 180); ctx.lineTo(310, 170);
-    ctx.lineTo(360, 150); ctx.lineTo(420, 150); ctx.lineTo(460, 185);
-    ctx.lineTo(540, 160); ctx.lineTo(590, 160); ctx.lineTo(630, 180);
-    ctx.lineTo(710, 165); ctx.lineTo(760, 165); ctx.lineTo(W, 180);
-    ctx.lineTo(W, GROUND_Y);
-    ctx.closePath();
-    ctx.fill();
-
-    // Silhouette de cactus au loin
-    ctx.fillStyle = 'rgba(120, 90, 60, 0.45)';
-    [100, 270, 480, 680].forEach(cx => {
-      ctx.fillRect(cx - 2, GROUND_Y - 22, 4, 22);
-      ctx.fillRect(cx - 6, GROUND_Y - 15, 4, 8);
-      ctx.fillRect(cx + 2, GROUND_Y - 18, 4, 8);
-    });
-  }
+  // Draw background based on current theme
+  if (currentTheme === 'larochelle') drawBgLaRochelle();
+  else if (currentTheme === 'vendee') drawBgVendee();
+  else if (currentTheme === 'auvergne') drawBgAuvergne();
+  else if (currentTheme === 'lyon') drawBgLyon();
+  else if (currentTheme === 'alps') drawBgAlps();
+  else if (currentTheme === 'mariachi') drawBgMariachi();
 
   drawClouds();
   drawGround();
-  if (currentTheme === 'ice') drawSnow();
+  if (currentTheme === 'alps') drawSnow();
 
   obstacles.forEach(ob => {
     if (ob.isDoor) drawDoor(ob);
     else if (ob.bird) {
-      if ((ob.spawnTheme || currentTheme) === 'ice') drawBird(ob);
-      else drawFlyingMariachi(ob);
+      const obstacleTheme = ob.spawnTheme || ob.theme || currentTheme;
+      drawObstacleContrastBackdrop(ob, obstacleTheme, true);
+      drawObstacleWithContrast(obstacleTheme, () => {
+        if (obstacleTheme === 'mariachi') drawFlyingMariachi(ob);
+        else drawBird(ob);
+      });
     } else {
-      if (currentTheme === 'ice') drawCactus(ob);
-      else drawBrickObstacle(ob);
+      const obstacleTheme = ob.theme || currentTheme;
+      drawObstacleContrastBackdrop(ob, obstacleTheme, false);
+      drawObstacleWithContrast(obstacleTheme, () => {
+        drawObstacleForTheme(obstacleTheme, ob);
+      });
     }
   });
 
