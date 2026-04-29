@@ -7,6 +7,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#D6EAF8">
+<meta name="application-name" content="Alex Runner">
+<meta name="apple-mobile-web-app-title" content="Alex Runner">
+<meta name="description" content="Alex Runner, endless runner d'Alexandre entre La Rochelle et Ferney-Voltaire.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <title>Alex Runner</title>
 <style>
   :root {
@@ -3001,6 +3007,14 @@ duckBtn.addEventListener('mousedown', () => {
 duckBtn.addEventListener('mouseup', () => {
   dino.ducking = false;
 });
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(error => {
+      console.error('Service worker registration failed:', error);
+    });
+  });
+}
 
 requestAnimationFrame(loop);
 </script>
