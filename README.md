@@ -56,23 +56,120 @@ Le jeu demarre dans le theme **glacial** et bascule tous les **150 points** vers
 - Desktop (>900 px avec pointeur fin) : card "glass" centre, clavier uniquement, boutons tactiles masques
 - Typography fluide via `clamp()`, safe-area insets pour les encoches
 
+## Structure du projet
+
+```
+.
+├── index.html              # HTML + meta tags + PWA manifest
+├── style.css               # Feuille de styles extraite
+├── manifest.webmanifest    # Configuration PWA (icônes, display)
+├── sw.js                   # Service Worker v2 (cache + offline)
+├── js/
+│   ├── main.js             # Point d'entrée, écrans onboarding, install prompt PWA
+│   ├── config.js           # Constantes (physique, canvas, thèmes, couleurs)
+│   ├── state.js            # État global, canvas, contexte 2D, ressources
+│   ├── game.js             # Boucle de jeu, physique, collision, scoring
+│   ├── graphics.js         # Rendu Canvas 2D (personnages, obstacles, fond)
+│   ├── input.js            # Gestionnaires d'événements (clavier, tactile)
+│   └── firebase.js         # Leaderboard Realtime Database
+├── assets/
+│   ├── images/
+│   │   └── alex_detoure.png    # Tête d'Alexandre détourée
+│   └── sounds/
+│       ├── nut_nut.mp3               # Son du saut (Pingu)
+│       ├── je_m-apelle-moumede.mp3   # Interlude mariachi 0
+│       ├── ouais_mamouaselle.mp3     # Interlude mariachi 1
+│       ├── oulala_moumed.mp3         # Interlude mariachi 2
+│       └── deception_pour_le_joueur_fr.mp3  # Son de mort
+└── icons/
+    └── ...                 # Icônes PWA (iOS, Android, Windows)
+```
+
+## Guide des modules
+
+### `js/config.js`
+Exporte les constantes immuables du jeu :
+- Dimensions du canvas (`W=800, H=250`)
+- Physique (`GRAVITY=0.6, JUMP_FORCE=-7`)
+- Thèmes disponibles et palettes de couleurs
+- Regex de détection iOS
+
+### `js/state.js`
+État global mutable + initialisation du contexte :
+- Objet `state` (vitesse, score, frame, gameState: idle|running|over)
+- Objets `dino` et objet obstacle actuel
+- Singleton `canvas` et contexte 2D `ctx`
+- Chargement des ressources (tête d'Alex, canvases offscreen)
+- Initialisation des nuages et flocons
+
+Tous les modules importent cet état et le mutent directement (singletons ES6 modules).
+
+### `js/game.js`
+Boucle de jeu et logique métier :
+- `loop()` : boucle à 60 FPS avec timestep fixe
+- `update()` : physique (gravité), collision, scoring, transitions de thèmes
+- `jump()` et `duck()` : action du joueur
+- `spawnObstacle()` : génération procédurale avec espacement minimum
+- `checkCollision()` : AABB + point-in-box
+- Portail des enfers : animation et passage transparent
+
+Difficulté progressive : avant 600 pts courbe smoothstep, après courbe linéaire.
+
+### `js/graphics.js`
+Rendu Canvas 2D complet (~2200 lignes) :
+- `draw()` : fonction maître appelée chaque frame
+- `drawDino()` : personnage avec animations (course, saut, glissade, squash/stretch)
+- `drawObstacleForTheme()` : dispatch vers renderers thème-spécifiques
+- `drawBgLaRochelle/Vendee/Auvergne/Lyon/Alps()` : parallaxe layerée
+- `drawPortal()` et `drawMariachi()` : transitions et créatures volantes
+- UI : score, modal game-over, leaderboard
+
+### `js/input.js`
+Gestionnaires d'événements :
+- Clavier : Espace / Flèche haut (sauter), Flèche bas (glisser)
+- Tactile : tap (sauter), swipe bas (glisser), boutons mobiles
+- Flags de prévention des doublons (dupJump, dupDuck)
+
+### `js/firebase.js`
+Intégration Firebase Realtime Database (v12.12.1) :
+- `submitScore(playerName, finalScore)` : enregistrer le score
+- `loadLeaderboard(currentScore)` : top 10 avec ranking
+- `fetchPlayerBestScore(playerName)` : meilleur score du joueur
+- `showLeaderboard()` / `hideLeaderboard()` : afficher/masquer modal
+
+### `js/main.js`
+Point d'entrée et onboarding :
+- Écran de naissance (détection date)
+- Écran de pseudo
+- Invite d'installation PWA (deferred) pour web
+- Détection iOS + lien "Add to Home Screen"
+- Enregistrement Service Worker
+- Vérification mise à jour SW (toutes les heures)
+- Gestion de `SKIP_WAITING` pour forcer la mise à jour
+
 ## Configuration
 
-Deux variables en haut de `index.html` pour faciliter les tests :
+Les constantes se trouvent dans `js/config.js` pour faciliter les tests :
 
 ```javascript
-const COLLISION_ENABLED = true;   // false = le joueur traverse les obstacles sans mourir
-const DATE_REQUIRED = true;       // false = skip l'ecran de date, tete neutre par defaut
+// Dans index.html - non utilisé, les constantes sont dans config.js
+// Mais vous pouvez modifier dans config.js :
+W = 800;
+H = 250;
+GRAVITY = 0.6;
+JUMP_FORCE = -7;
 ```
 
 ## Technique
 
-- Fichier unique `index.html` (HTML + CSS + JS, zero dependance externe)
-- Rendu Canvas 2D avec animations procedurales (zero sprite, sauf la tete d'Alex detouree)
-- Physique : gravite, squash & stretch avec ressort
-- Systeme de themes dispatch : chaque fonction de rendu (ciel, sol, obstacles, volants) branche sur `currentTheme`
-- Tete neutre pre-rendue sur un canvas offscreen
-- Meta viewport avec `viewport-fit=cover` et desactivation du zoom pour une experience jeu
+- **Architecture modulaire** : 7 modules ES6 + entry point, zéro dépendances externes (sauf Firebase v12)
+- **Rendu** : Canvas 2D avec animations procédurales (zéro sprite, sauf tête d'Alex détourée)
+- **Physique** : gravité, squash & stretch avec ressort, timestep fixe 60 FPS
+- **État** : singleton `state` partagé par tous les modules via imports ES6
+- **Thèmes** : dispatch via fonction sur `state.currentTheme` (9 renderers différents)
+- **PWA** : Service Worker v2 (cache à 2 niveaux), install prompt, offline support
+- **Firebase** : Realtime Database pour leaderboard persistant
+- **Responsive** : viewport-fit=cover, safe-area insets, media queries, clamp() fluide
 
 ## Hebergement
 

@@ -1,17 +1,25 @@
-const CACHE_VERSION = 'alex-runner-v1';
+const CACHE_VERSION = 'alex-runner-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_ASSETS = [
   './',
   './index.html',
+  './style.css',
   './manifest.webmanifest',
-  './alex_detoure.png',
-  './nut_nut.mp3',
-  './je_m-apelle-moumede.mp3',
-  './ouais_mamouaselle.mp3',
-  './oulala_moumed.mp3',
-  './deception_pour_le_joueur_fr.mp3',
+  './assets/images/alex_detoure.png',
+  './assets/sounds/nut_nut.mp3',
+  './assets/sounds/je_m-apelle-moumede.mp3',
+  './assets/sounds/ouais_mamouaselle.mp3',
+  './assets/sounds/oulala_moumed.mp3',
+  './assets/sounds/deception_pour_le_joueur_fr.mp3',
+  './js/config.js',
+  './js/state.js',
+  './js/firebase.js',
+  './js/graphics.js',
+  './js/game.js',
+  './js/input.js',
+  './js/main.js',
   './icons/icon-64.png',
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
@@ -42,6 +50,12 @@ self.addEventListener('activate', event => {
     );
     await self.clients.claim();
   })());
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', event => {
