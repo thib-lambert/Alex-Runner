@@ -41,6 +41,28 @@ Le jeu demarre dans le theme **glacial** et bascule tous les **150 points** vers
 - **Ombre portee** qui se retracte en vol pour la sensation de poids
 - **Screen shake** au contact d'un obstacle
 
+## Social et hors ligne
+
+- Au demarrage, le joueur peut se connecter ou creer un compte avec email/mot de passe ; un nouveau compte choisit ensuite un pseudo unique avant d'acceder au jeu.
+- Le jeu et les scores recents restent disponibles sans connexion grace au stockage local et au service worker.
+- Le classement affiche le meilleur score de chaque joueur et ses trois derniers runs connus.
+- Le bouton `AMIS` permet d'ajouter des pseudos et de lancer des defis depuis l'ecran d'accueil ou apres une partie.
+- Firebase Authentication attribue un `uid` a chaque joueur ; le pseudo est une propriete du profil et ne sert pas d'identite technique.
+- Firebase est une synchronisation facultative quand le reseau est disponible ; le mode local reste disponible hors ligne.
+- Un defi est un duel one-shot : chaque participant joue une seule manche, le meilleur score gagne 25 A-coins.
+- Le run d'un participant est conserve dans `playedBy/{uid}` et son score ne peut plus etre remplace.
+- Les A-coins sont depenses dans la boutique pour acheter et equiper des skins d'Alex.
+
+Pour activer les defis et les amities entre appareils, active le fournisseur **Email/Password** dans Firebase Authentication puis publie les regles de `database.rules.json`. Le mode local continue de fonctionner si Firebase est indisponible.
+
+## Ameliorations potentielles
+
+- Ajouter la recuperation de mot de passe et la verification d'adresse email.
+- Ajouter une vraie reception de defi, avec score cible, date limite et notification.
+- Remplacer `localStorage` par IndexedDB pour une file de synchronisation plus volumineuse.
+- Ajouter des filtres de classement (amis, semaine, saison) et des badges de progression.
+- Ajouter une page de reglages pour le son, les vibrations et le contraste eleve.
+
 ## Gameplay
 
 - Difficulte progressive (courbe smoothstep sur la vitesse, plafonnee a 14)

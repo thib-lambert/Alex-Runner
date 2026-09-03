@@ -6,9 +6,13 @@ export function setupInputHandlers() {
   document.addEventListener('keydown', e => {
     if (e.code === 'Space' || e.code === 'ArrowUp') {
       e.preventDefault();
-      state.jumpHeld = true;
-      if (state.gameState === 'idle' || state.gameState === 'over') startGame();
-      else if (state.gameState === 'running') jump();
+      if (state.gameState === 'idle') {
+        state.jumpHeld = true;
+        startGame();
+      } else if (state.gameState === 'running') {
+        state.jumpHeld = true;
+        jump();
+      }
     }
     if (e.code === 'ArrowDown') {
       e.preventDefault();
@@ -29,9 +33,10 @@ export function setupInputHandlers() {
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (state.gameState === 'over') return;
     touchStartY = e.touches[0].clientY;
     state.jumpHeld = true;
-    if (state.gameState === 'idle' || state.gameState === 'over') startGame();
+    if (state.gameState === 'idle') startGame();
     else if (state.gameState === 'running') jump();
   });
 
@@ -57,7 +62,7 @@ export function setupInputHandlers() {
   const duckBtn = document.getElementById('duck-btn');
 
   jumpBtn.addEventListener('click', () => {
-    if (state.gameState === 'idle' || state.gameState === 'over') startGame();
+    if (state.gameState === 'idle') startGame();
     else if (state.gameState === 'running') jump();
   });
 
@@ -66,7 +71,7 @@ export function setupInputHandlers() {
     e.preventDefault();
     state.jumpBtnActive = true;
     state.jumpHeld = true;
-    if (state.gameState === 'idle' || state.gameState === 'over') startGame();
+    if (state.gameState === 'idle') startGame();
     else if (state.gameState === 'running') jump();
   });
 

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'alex-runner-v2';
+const CACHE_VERSION = 'alex-runner-v7';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -34,8 +34,14 @@ const FIREBASE_MODULES = [
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
-    const cache = await caches.open(STATIC_CACHE);
-    await cache.addAll([...APP_ASSETS, ...FIREBASE_MODULES]);
+      const cache = await caches.open(STATIC_CACHE);
+      await Promise.all([...APP_ASSETS, ...FIREBASE_MODULES].map(async asset => {
+        try {
+          await cache.add(asset);
+        } catch (error) {
+          console.warn('Optional asset unavailable during install:', asset, error);
+        }
+      }));
     await self.skipWaiting();
   })());
 });

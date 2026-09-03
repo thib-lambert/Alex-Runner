@@ -1,0 +1,58 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "profiles": {
+      ".read": "auth != null",
+      ".indexOn": ["pseudoNormalized"],
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['pseudo', 'pseudoNormalized'])"
+      }
+    },
+    "pseudoIndex": {
+      "$pseudo": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.val() == auth.uid) || (data.val() == auth.uid && newData.val() == auth.uid))",
+        ".validate": "newData.isString()"
+      }
+    },
+    "scores": {
+      ".read": "auth != null",
+      "$scoreId": {
+        ".read": "auth != null",
+        ".write": "auth != null && newData.child('uid').val() == auth.uid",
+        ".validate": "newData.hasChildren(['uid', 'player', 'score', 'timestamp']) && newData.child('score').isNumber()"
+      }
+    },
+    "friendships": {
+      ".read": "auth != null",
+      "$friendshipId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (newData.child('requesterUid').val() == auth.uid || newData.child('users/0').val() == auth.uid || newData.child('users/1').val() == auth.uid || data.child('users/0').val() == auth.uid || data.child('users/1').val() == auth.uid)",
+        ".validate": "newData.child('users').hasChildren(['0', '1']) && (newData.child('status').val() == 'pending' || newData.child('status').val() == 'accepted' || newData.child('status').val() == 'declined')"
+      }
+    },
+    "challenges": {
+      ".read": "auth != null",
+      "$challengeId": {
+        ".read": "auth != null && (data.child('challengerUid').val() == auth.uid || data.child('opponentUid').val() == auth.uid)",
+        ".write": "auth != null && !data.exists() && newData.child('challengerUid').val() == auth.uid",
+        ".validate": "newData.hasChildren(['challengerUid', 'opponentUid', 'users', 'scores'])",
+        "scores": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid && (!data.exists() || data.val() == 0) && (root.child('challenges').child($challengeId).child('challengerUid').val() == auth.uid || root.child('challenges').child($challengeId).child('opponentUid').val() == auth.uid)",
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
+        },
+        "playedBy": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid && !data.exists() && (root.child('challenges').child($challengeId).child('challengerUid').val() == auth.uid || root.child('challenges').child($challengeId).child('opponentUid').val() == auth.uid)",
+            ".validate": "newData.val() == true"
+          }
+        }
+      }
+    }
+  }
+}

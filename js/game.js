@@ -4,7 +4,7 @@ import {
 } from './config.js';
 import { state, dino, canvas } from './state.js';
 import { draw, animateSnow } from './graphics.js';
-import { submitScore, showLeaderboard, hideLeaderboard } from './firebase.js';
+import { submitScore, hideLeaderboard, completeChallenge, awardScoreCoins } from './firebase.js';
 
 function getStageTheme() {
   return THEMES[state.themeIndex];
@@ -270,20 +270,23 @@ function update() {
       if (COLLISION_ENABLED) {
         state.gameState = 'over';
         if (state.score > state.highScore) state.highScore = state.score;
+        if (state.score > state.playerBestScore) state.playerBestScore = Math.floor(state.score);
         playGameOverSound();
+
+        const challengeRun = Boolean(state.activeChallenge);
+        const earnedCoins = challengeRun
+          ? completeChallenge(state.score)
+          : awardScoreCoins(state.score);
 
         if (state.currentPseudo) submitScore(state.currentPseudo, state.score);
 
         const messageEl = document.getElementById('message');
-        messageEl.innerHTML = '<h2>GAME OVER</h2><p>Score: ' + String(Math.floor(state.score)).padStart(5, '0') +
+        messageEl.innerHTML = '<h2>' + (challengeRun ? 'DUEL TERMINE' : 'GAME OVER') + '</h2><p>Score: ' + String(Math.floor(state.score)).padStart(5, '0') +
           (state.highScore > 0 ? ' | Record: ' + String(Math.floor(state.highScore)).padStart(5, '0') : '') +
-          '</p><p style="margin-top:8px">Appuie sur Espace pour rejouer</p>';
+          '</p><p style="margin-top:8px">+' + earnedCoins + ' A-coins | ' + (challengeRun ? 'Participation incluse, bonus de victoire éventuel.' : 'Choisis une action pour continuer.') + '</p>' +
+          '<div class="game-over-actions"><button id="restart-game" type="button">REJOUER</button><button id="return-home" type="button">ACCUEIL</button></div>';
         messageEl.style.display = 'block';
 
-        state.leaderboardTimeoutId = setTimeout(() => {
-          state.leaderboardTimeoutId = null;
-          showLeaderboard(state.score);
-        }, 500);
         return;
       }
     }

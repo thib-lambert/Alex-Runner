@@ -1,7 +1,7 @@
 import {
   W, H, GROUND_Y,
   WARM_THEMES, THEMES,
-  COL_SKIN, COL_JACKET, COL_JACKET_LIGHT, COL_JACKET_DARK, COL_COLLAR, COL_SHORT
+  COL_SKIN, COL_JACKET, COL_JACKET_LIGHT, COL_JACKET_DARK, COL_COLLAR, COL_SHORT, SKINS
 } from './config.js';
 import { state, dino, ctx, currentHead } from './state.js';
 
@@ -18,7 +18,8 @@ function drawLimb(pivotX, pivotY, w, h, angle) {
 }
 
 function drawJacket(x, y, w, h, side) {
-  ctx.fillStyle = COL_JACKET;
+  const skin = SKINS.find(item => item.id === state.activeSkin) || SKINS[0];
+  ctx.fillStyle = skin.jacket || COL_JACKET;
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, 4);
   ctx.fill();
@@ -26,12 +27,12 @@ function drawJacket(x, y, w, h, side) {
   const segH = h / 3;
   for (let i = 0; i < 3; i++) {
     const yTop = y + segH * i;
-    ctx.fillStyle = COL_JACKET_LIGHT;
+    ctx.fillStyle = skin.light || COL_JACKET_LIGHT;
     ctx.beginPath();
     ctx.roundRect(x + 2, yTop + 1, w - 4, 2, 1);
     ctx.fill();
   }
-  ctx.strokeStyle = COL_JACKET_DARK;
+  ctx.strokeStyle = skin.dark || COL_JACKET_DARK;
   ctx.lineWidth = 1;
   for (let i = 1; i < 3; i++) {
     const yi = y + segH * i;
@@ -49,7 +50,7 @@ function drawJacket(x, y, w, h, side) {
   ctx.fillRect(x + 2, y + 1, w - 4, 1);
 
   if (side === 'front') {
-    ctx.strokeStyle = COL_JACKET_DARK;
+    ctx.strokeStyle = skin.dark || COL_JACKET_DARK;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(x + w / 2, y);

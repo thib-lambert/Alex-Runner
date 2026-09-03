@@ -40,22 +40,44 @@
   </div>
 </div>
 <div id="game-wrapper">
-  <div id="birth-screen">
+  <div id="auth-screen" class="onboarding-screen active">
     <h2>ALEX RUNNER</h2>
-    <p style="margin-bottom:12px;font-size:14px;max-width:420px">Saisir la date de naissance d'Alexandre ou celle dont se souviennent ses potes</p>
-    <input type="text" id="birth-input" placeholder="JJ/MM/AAAA" maxlength="10" autocomplete="off">
+    <p>Connecte-toi ou cree ton compte</p>
+    <input type="email" id="email-input" placeholder="TON EMAIL" autocomplete="email">
+    <input type="password" id="password-input" placeholder="MOT DE PASSE" minlength="6" autocomplete="current-password">
+    <button id="email-sign-in" type="button">SE CONNECTER</button>
+    <button id="email-create" type="button">CREER UN COMPTE</button>
+    <p id="auth-error" class="form-error" role="alert"></p>
   </div>
   <div id="pseudo-screen">
     <h2>ALEX RUNNER</h2>
-    <p style="font-size:14px;max-width:420px">Entre ton pseudo pour le leaderboard</p>
+    <p>Choisis ton pseudo unique</p>
     <input type="text" id="pseudo-input" placeholder="TON PSEUDO" maxlength="20" autocomplete="off">
-    <p style="font-size:12px;color:var(--muted)">Appuie sur Entree pour continuer</p>
+    <button id="pseudo-confirm" type="button">CONTINUER</button>
+    <p id="pseudo-error" class="form-error" role="alert"></p>
   </div>
   <div id="leaderboard-screen">
     <div id="leaderboard-container">
-      <h2>🏆 LEADERBOARD 🏆</h2>
+      <div class="panel-heading"><h2>CLASSEMENT</h2><span id="connection-status" class="connection-status" role="status" aria-live="polite" title="En ligne"></span></div>
       <div id="leaderboard-list"></div>
       <button id="leaderboard-close">FERMER</button>
+    </div>
+  </div>
+  <div id="friends-screen" class="social-screen">
+    <div class="social-container">
+      <div class="panel-heading"><h2>AMIS</h2><span class="social-badge">LOCAL</span></div>
+      <form id="friend-form" class="friend-form">
+        <label for="friend-input">Ajouter un pseudo</label>
+        <div><input id="friend-input" type="search" maxlength="20" autocomplete="off" list="friend-suggestions" placeholder="RECHERCHER UN PSEUDO"><datalist id="friend-suggestions"></datalist><button type="submit">AJOUTER</button></div>
+      </form>
+      <h3>DEMANDES D'AMIS</h3>
+      <ul id="friend-requests-list" class="social-list"></ul>
+      <ul id="friends-list" class="social-list"></ul>
+      <h3>DEMANDES DE DEFIS</h3>
+      <ul id="challenge-requests-list" class="social-list"></ul>
+      <h3>DEFIS EN COURS</h3>
+      <ul id="challenges-list" class="social-list"></ul>
+      <button id="friends-close" class="panel-close" type="button">FERMER</button>
     </div>
   </div>
   <canvas id="game" width="800" height="250"></canvas>
@@ -65,8 +87,18 @@
     <h2>ALEX RUNNER</h2>
     <p>Appuie sur Espace ou touche l'ecran pour jouer</p>
     <div class="message-actions">
-      <button id="leaderboard-open" class="message-action-btn" type="button">🏆 LEADERBOARD 🏆</button>
+      <button id="leaderboard-open" class="message-action-btn" type="button">CLASSEMENT</button>
+      <button id="friends-open" class="message-action-btn secondary" type="button">AMIS<span id="friends-notification" class="notification-dot" aria-label="Nouvelles notifications"></span></button>
+      <button id="shop-open" class="message-action-btn secondary" type="button">BOUTIQUE</button>
       <button id="install-home" class="message-action-btn secondary hidden" type="button">INSTALLER</button>
+    </div>
+  </div>
+  <div id="shop-screen" class="social-screen">
+    <div class="social-container">
+      <div class="panel-heading"><h2>BOUTIQUE</h2><span id="coin-balance" class="social-badge">0 A-COINS</span></div>
+      <p class="panel-caption">Skins d'Alex</p>
+      <ul id="shop-list" class="social-list"></ul>
+      <button id="shop-close" class="panel-close" type="button">FERMER</button>
     </div>
   </div>
   <div id="mobile-controls">
